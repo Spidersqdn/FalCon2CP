@@ -427,7 +427,7 @@ function render(g,ro,other){const L_=legs(),n=S.pts.length,anf=S.ui.style==='anf
       const M=g._map||map,z=M.getZoom(),pa=M.project([LA(a),LO(a)],z),pb=M.project([LA(b),LO(b)],z),d=pb.subtract(pa),len=d.distanceTo([0,0])||1,u=d.divideBy(len);
       const ra=RING*(a.msc||S.ui.msc||1),rb=RING*(b.msc||S.ui.msc||1);
       if(len>ra+rb)L.polyline([M.unproject(pa.add(u.multiplyBy(ra)),z),M.unproject(pb.subtract(u.multiplyBy(rb)),z)],{color:'#000',weight:a.lw||S.ui.lw||3*(S.ui.lwc||1),dashArray:dash}).addTo(g);
-      if(shw('pill')&&!dupL){const r=pad3(l.crsNum+180),rt=d.x>=0,hs=a.ph||S.ui.ph||'b',txt='<'+[hs!=='r'?(rt?r:l.crsTxt)+'°':null,(+l.nm).toFixed(1)+' NM',hs!=='l'?(rt?l.crsTxt:r)+'°':null].filter(Boolean).join('/')+'>';
+      if(shw('pill')&&!dupL){const r=pad3(l.crsNum+180),rt=d.x>=0,hs=a.ph||S.ui.ph||'b',txt=(hs!=='r'?'<':'')+[hs!=='r'?(rt?r:l.crsTxt)+'°':null,(+l.nm).toFixed(1)+' NM',hs!=='l'?(rt?l.crsTxt:r)+'°':null].filter(Boolean).join('/')+(hs!=='l'?'>':''); // arrow only on the side that shows a HDG
         let ang=Math.atan2(d.y,d.x)*180/Math.PI;if(ang>90)ang-=180;if(ang<-90)ang+=180;
         const mp=pa.add(pb).divideBy(2),c=M.project(CTR,z);let nx=-u.y,ny=u.x;
         if(shw('box')){const dl=LA(b)-LA(a),dn=LO(b)-LO(a),bo=a.boff||(dn>=0?[-dn,dl]:[dn,-dl]);if(bo[1]*nx-bo[0]*ny>0){nx=-nx;ny=-ny}} // DOG LEG shown: text goes on the other side of the leg
