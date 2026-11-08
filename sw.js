@@ -1,13 +1,13 @@
 // Offline cache: app files + map tiles (OSM tiles and PMTiles byte ranges) viewed while online.
 // Bump APP when sw.js changes. App files are always revalidated with the server, so index.html changes
 // reach installed (home-screen) apps without a bump; the page also checks for a new version on resume.
-const APP='app-v14',TILES='tiles';
+const APP='app-v15',TILES='tiles';
 const SHELL=['./','index.html','config.js','lib/leaflet.js','lib/leaflet.css','lib/pmtiles.js','lib/jszip.min.js','icon.svg','icons/slide-bg.jpg','icon-192.png','manifest.webmanifest','lib/fonts/sarabun-400-thai.woff2','lib/fonts/sarabun-400-latin.woff2','lib/fonts/sarabun-700-thai.woff2','lib/fonts/sarabun-700-latin.woff2'];
 let offline=true;
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(APP).then(c=>c.addAll(SHELL.map(u=>new Request(u,{cache:'reload'})))).catch(()=>{}))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(n=>n!==APP&&n!==TILES).map(n=>caches.delete(n)))).then(()=>self.clients.claim()))});
 self.addEventListener('message',e=>{if(e.data&&'offline' in e.data)offline=!!e.data.offline});
-const isOSM=u=>/(^|\.)tile\.openstreetmap\.org$/.test(u.hostname)||(u.hostname==='s3.amazonaws.com'&&u.pathname.startsWith('/elevation-tiles-prod/'));
+const isOSM=u=>/(^|\.)tile\.openstreetmap\.org$/.test(u.hostname)||(u.hostname==='server.arcgisonline.com'&&u.pathname.includes('/World_Imagery/'))||(u.hostname==='s3.amazonaws.com'&&u.pathname.startsWith('/elevation-tiles-prod/'));
 self.addEventListener('fetch',e=>{const r=e.request,u=new URL(r.url);if(r.method!=='GET')return;
   const range=r.headers.get('range');
   if(range&&/\.pmtiles$/i.test(u.pathname))return e.respondWith(rangeFetch(r,range));
