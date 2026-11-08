@@ -226,7 +226,7 @@ body{height:100dvh}
 <div id="upd" onclick="location.reload()">มีเวอร์ชันใหม่ · แตะเพื่ออัปเดต ⟳</div>
 <script>
 const COL={PZ:'#FF66CC',CP:'#22BB33',LZ:'#FFD700'};
-const OSM='https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+const OSM='https://tile.openstreetmap.org/{z}/{x}/{y}.png',SAT='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'; // SAT: Esri World Imagery
 const $=id=>document.getElementById(id);
 let S={pts:[]};try{S=JSON.parse(localStorage.getItem('routeS'))||S}catch(e){}
 S.ui=Object.assign({mode:'map',style:'anf',line:'solid',lbl:true,box:true,off:true},S.ui||{});
@@ -273,9 +273,10 @@ function pmLayer(u){const f=u.startsWith('local:')&&LM[lmName(u)];
   const p=new pmtiles.PMTiles(f?new pmtiles.FileSource(f):u);pmSrc={u,p,max:12};const l=pmtiles.leafletRasterLayer(p,{maxZoom:18,maxNativeZoom:12});
   p.getHeader().then(h=>{pmSrc.max=h.maxZoom;pmSrc.min=h.minZoom;l.options.maxNativeZoom=h.maxZoom;l.options.minNativeZoom=h.minZoom;l.redraw()}).catch(()=>{});return l;}
 function pickMap(v){if(v&&v.startsWith('local:')&&!LM[lmName(v)]&&LH[lmName(v)]){const n=lmName(v);LH[n].requestPermission({mode:'read'}).then(r=>r==='granted'&&LH[n].getFile()).then(f=>{if(f){LM[n]=f;$('lmInfo').textContent=`เปิด ${n} แล้ว`;if($('tileUrl').value===v)setBase()}else lmAsk(n)}).catch(()=>lmAsk(n))}
-  if(/500k/i.test(v))$('pS').value='500000';else if(/250k/i.test(v))$('pS').value='250000';if(v==='osm'){$('tileUrl').value=OSM}else if(v)$('tileUrl').value=v;setBase();$('lmDel').style.display=$('tileUrl').value.startsWith('local:')?'':'none'}
+  if(/500k/i.test(v))$('pS').value='500000';else if(/250k/i.test(v))$('pS').value='250000';if(v==='osm'){$('tileUrl').value=OSM}else if(v==='sat'){$('tileUrl').value=SAT}else if(v)$('tileUrl').value=v;setBase();$('lmDel').style.display=$('tileUrl').value.startsWith('local:')?'':'none'}
 function setBase(){ if(base)map.removeLayer(base);const u=$('tileUrl').value;
   base=u===OSM?L.tileLayer(OSM,{maxZoom:19,crossOrigin:true,attribution:'© OpenStreetMap'})
+    :u===SAT?L.tileLayer(SAT,{maxZoom:19,maxNativeZoom:18,crossOrigin:true,attribution:'Imagery © Esri, Maxar, Earthstar Geographics'})
     :/\.pmtiles$/i.test(u)?pmLayer(u)
     :L.tileLayer(u,{tms:$('tms').checked,maxZoom:18,maxNativeZoom:16,errorTileUrl:''});
   base.addTo(map); save(); }
@@ -706,7 +707,7 @@ async function expAs(f){$('expM').classList.remove('on');if(!S.pts.length)return
   if(f==='csv'){const q=v=>{v=String(v??'');return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
     return dl('route.csv','route,type,name,lat,lon,alt_ft\n'+routesOut().flatMap(([n,P])=>P.map(p=>[n,p.type,p.name,p.lat,p.lon,p.alt].map(q).join(','))).join('\n'),'text/csv')}}
 // ---- SLIDE: 16:9 "MISSION OVERVIEW" briefing PNG (3200x1800 = 1600x900 design units x2) ----
-const SL_F=['route','dist','alt','msa','speed','ete','code'],SL_FONT='"TH SarabunPSK","TH Sarabun New",MapSar,Sarabun,Tahoma,sans-serif';
+const SL_F=['ttl','route','dist','alt','msa','speed','ete','code'],SL_FONT='"TH SarabunPSK","TH Sarabun New",MapSar,Sarabun,Tahoma,sans-serif';
 let slK=1,slBg=null;
 function slRoute(){const R=routesOut();return R.length?R[0][1]:S.pts} // primary route
 function slAuto(){const P=slRoute(),f=P[0],z=P[P.length-1],kt=+$('kt').value||120;
@@ -723,8 +724,8 @@ function slFill(all){const a=slAuto();Object.keys(a).forEach(k=>$('sl_'+k).value
 async function openSlide(){if(S.pts.length<2)return alert('ต้องมี waypoint อย่างน้อย 2 จุดก่อนทำ SLIDE');
   if(!$('sld')){document.body.insertAdjacentHTML('beforeend',`<div id="sld"><div class="sbox">
     <div class="shd"><b>SLIDE · MISSION OVERVIEW</b><button onclick="$('sld').remove()">✕</button></div>
-    <div class="sfm">${[['route','เส้นทางบิน'],['dist','ระยะทาง (NM)'],['alt','ความสูงบิน (ft)'],['msa','MSA (ft)'],['speed','ความเร็ว (kt)'],['ete','ใช้เวลา (นาที)'],['code','ICAO (DEP - DEST)']]
-      .map(([k,t])=>`<label class="${k==='route'?'w':''}">${t}<input id="sl_${k}" onchange="slSave()"></label>`).join('')}</div>
+    <div class="sfm">${[['ttl','หัวเรื่อง (ว่าง = เส้นทางบิน)'],['route','เส้นทางบิน'],['dist','ระยะทาง (NM)'],['alt','ความสูงบิน (ft)'],['msa','MSA (ft)'],['speed','ความเร็ว (kt)'],['ete','ใช้เวลา (นาที)'],['code','ICAO (DEP - DEST)']]
+      .map(([k,t])=>`<label class="${k==='route'||k==='ttl'?'w':''}">${t}<input id="sl_${k}" onchange="slSave()"></label>`).join('')}</div>
     <div class="sbt"><button class="pri" onclick="slSave();buildSlide()">อัปเดต</button><button onclick="slPng()">บันทึก PNG</button><button onclick="slShare()">แชร์</button><button onclick="slFill(true)">ค่าเริ่มต้น</button></div>
     <canvas id="slC" width="3200" height="1800"></canvas></div></div>`)}
   const o=slLoad();SL_F.forEach(k=>{if(o[k]!=null)$('sl_'+k).value=o[k]});
@@ -768,7 +769,7 @@ async function buildSlide(){const cv=$('slC');if(!cv)return;const c=cv.getContex
   const bx=(x,y,w,h,f,ln)=>{c.fillStyle=f;c.fillRect(x,y,w,h);if(ln){c.lineWidth=ln[1];c.strokeStyle=ln[0];c.strokeRect(x+ln[1]/2,y+ln[1]/2,w-ln[1],h-ln[1])}};
   c.save();c.shadowColor='rgba(0,0,0,.35)';c.shadowBlur=12;c.shadowOffsetY=3;c.fillStyle=NV;c.fillRect(X,y,W,TH);c.restore();const y0=y;
   bx(X,y,W,HH,NV);slTxt(c,'ENROUTE / DIST / ALT / SPEED / ETE',X+W/2,y+HH/2,24);y+=HH;
-  bx(X,y,W,RB,NV);slTxt(c,'เส้นทางบิน',X+W/2,y+RB*.3,23,{b:true});slTxt(c,v('route')||'-',X+W/2,y+RB*.72,23,{b:true});y+=RB;
+  bx(X,y,W,RB,NV);slTxt(c,v('ttl')||'เส้นทางบิน',X+W/2,y+RB*.3,23,{b:true});slTxt(c,v('route')||'-',X+W/2,y+RB*.72,23,{b:true});y+=RB;
   const rows=[['ระยะทาง',v('dist'),'ไมล์ทะเล'],['ความสูงบิน',v('alt'),'ฟุต'],['MSA',v('msa'),'ฟุต'],['ความเร็ว',v('speed'),'นอต'],['ใช้เวลา',v('ete'),'นาที']];
   bx(X,y,W,DB,ND);rows.forEach(([l,val,u],i)=>{const yy=y+8+i*RH+RH/2;slTxt(c,l,X+22,yy,21,{al:'l'});slTxt(c,val?val+(num(val)?' '+u:''):'-',X+W*.37,yy,21,{al:'l'})});y+=DB;
   bx(X,y,W,BB,ND);slTxt(c,'เส้นทางบิน : '+(v('code')||'-'),X+22,y+BB/2,21,{al:'l'});
@@ -811,8 +812,8 @@ function prUpd(){if(!$('pS'))return;const {c,pages,nr,nc}=prPages();
 // base-map tile source for print: returns {get(z,x,y)->Promise<img src|null>, max}
 function tileSrc(){const u=$('tileUrl').value;
   if(/\.pmtiles$/i.test(u)&&pmSrc&&pmSrc.u===u)return {max:pmSrc.max,min:pmSrc.min||0,get:(z,x,y)=>pmSrc.p.getZxy(z,x,y).then(r=>r&&r.data?URL.createObjectURL(new Blob([r.data])):null)};
-  const tms=$('tms').checked&&u!==OSM;
-  return {max:u===OSM?19:16,min:0,get:(z,x,y)=>Promise.resolve(L.Util.template(u,{z,x,s:'a',y:tms?(1<<z)-1-y:y}))}}
+  const tms=$('tms').checked&&u!==OSM&&u!==SAT;
+  return {max:u===OSM?19:u===SAT?18:16,min:0,get:(z,x,y)=>Promise.resolve(L.Util.template(u,{z,x,s:'a',y:tms?(1<<z)-1-y:y}))}}
 // 128-px grid cells filled with 256-px tiles of zoom+1: 2x pixels on paper (~170-190 dpi)
 const HiRes=L.GridLayer.extend({createTile(co,done){const img=document.createElement('img');img.alt='';img.crossOrigin='anonymous';
   const fin=()=>done(null,img);this.options.src.get(co.z+1,co.x,co.y).then(s=>{if(!s)return fin();img.onload=img.onerror=fin;img.src=s}).catch(fin);return img}});
@@ -873,7 +874,7 @@ if(S.pr){$('pS').value=S.pr.S;$('pP').value=S.pr.P;$('pO').value=S.pr.O;$('pOv')
 $('offl').checked=S.ui.off;
 if(!S.pts.length&&!localStorage.getItem('routeS'))S.pts=[{type:'PZ',name:'ท่าอากาศยานร้อยเอ็ด',lat:16.1168,lon:103.7741,alt:'1100'},{type:'CP2',name:'สนาม ฮ. พล.ร.6',lat:16.105,lon:103.545,alt:'1100'},{type:'LZ',name:'สนาม ฮ. รร.สารคามพิทยาคม',lat:16.184,lon:103.3,alt:''}];
 if(new URLSearchParams(location.search).get('map')||!S.cfg||!/^(https?|local):/.test($('tileUrl').value))$('tileUrl').value=qm||$('tileUrl').value;
-[...(window.CONFIG&&CONFIG.MAPS||[]),{name:'OpenStreetMap (offline cache)',url:'osm'}].forEach(m=>$('mapSel').add(new Option(m.name,m.url)));
-$('mapSel').add(new Option('-- URL เอง --',''));$('mapSel').value=$('tileUrl').value===OSM?'osm':$('tileUrl').value;
+[...(window.CONFIG&&CONFIG.MAPS||[]),{name:'OpenStreetMap (offline cache)',url:'osm'},{name:'ภาพดาวเทียม (Esri)',url:'sat'}].forEach(m=>$('mapSel').add(new Option(m.name,m.url)));
+$('mapSel').add(new Option('-- URL เอง --',''));$('mapSel').value=$('tileUrl').value===OSM?'osm':$('tileUrl').value===SAT?'sat':$('tileUrl').value;
 globSizes();setMode(S.ui.mode);routeBtns();setStyle(S.ui.style);setBase();togTxt();if(S.pts.length)map.fitBounds(S.pts.map(p=>[p.lat,p.lon]),{padding:innerWidth<700?[30,30]:[120,120]});else map.setView([16.1168,103.7741],9);cacheInfo();lmInit();
 </script></body></html>
