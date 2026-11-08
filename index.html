@@ -427,7 +427,7 @@ function render(g,ro,other){const L_=legs(),n=S.pts.length,anf=S.ui.style==='anf
       const M=g._map||map,z=M.getZoom(),pa=M.project([LA(a),LO(a)],z),pb=M.project([LA(b),LO(b)],z),d=pb.subtract(pa),len=d.distanceTo([0,0])||1,u=d.divideBy(len);
       const ra=RING*(a.msc||S.ui.msc||1),rb=RING*(b.msc||S.ui.msc||1);
       if(len>ra+rb)L.polyline([M.unproject(pa.add(u.multiplyBy(ra)),z),M.unproject(pb.subtract(u.multiplyBy(rb)),z)],{color:'#000',weight:a.lw||S.ui.lw||3*(S.ui.lwc||1),dashArray:dash}).addTo(g);
-      if(shw('pill')&&!dupL){const r=pad3(l.crsNum+180),rt=d.x>=0,txt=`<${rt?r:l.crsTxt}°/${(+l.nm).toFixed(1)} NM/${rt?l.crsTxt:r}°>`;
+      if(shw('pill')&&!dupL){const r=pad3(l.crsNum+180),rt=d.x>=0,hs=a.ph||S.ui.ph||'b',txt='<'+[hs!=='r'?(rt?r:l.crsTxt)+'°':null,(+l.nm).toFixed(1)+' NM',hs!=='l'?(rt?l.crsTxt:r)+'°':null].filter(Boolean).join('/')+'>';
         let ang=Math.atan2(d.y,d.x)*180/Math.PI;if(ang>90)ang-=180;if(ang<-90)ang+=180;
         const mp=pa.add(pb).divideBy(2),c=M.project(CTR,z);let nx=-u.y,ny=u.x;
         if(shw('box')){const dl=LA(b)-LA(a),dn=LO(b)-LO(a),bo=a.boff||(dn>=0?[-dn,dl]:[dn,-dl]);if(bo[1]*nx-bo[0]*ny>0){nx=-nx;ny=-ny}} // DOG LEG shown: text goes on the other side of the leg
@@ -498,8 +498,10 @@ let edPrev=null; // phone portrait: remember sheet state, show editor in place o
 function editLeg(i,ll){const a=S.pts[i];
   popForm(ll,`<b>กล่อง LEG ${i+1}</b>
    <label>ขนาดกล่องนี้</label>${pctIn('gS',(a.psc||a.bsc||S.ui.bsc||1)*100,`S.pts[${i}].psc=this.value/100;draw()`)}
-   <label style="color:#333"><input type="checkbox" id="gAll" style="width:auto"> ใช้ขนาดนี้กับทุกกล่อง LEG</label>
-   <button class="pri" onclick="if($('gAll').checked){const v=$('gS').value/100;S.pts.forEach(p=>p.psc=v)}closeEd();draw()">บันทึก</button><button onclick="delete S.pts[${i}].psc;delete S.pts[${i}].poff;closeEd();draw()">คืนค่าเดิม</button>`)}
+   <label>แสดง HDG</label><div class="seg" style="margin:0">${[['l','ซ้าย'],['r','ขวา'],['b','ทั้งสองฝั่ง']].map(([k,t])=>`<button id="gH${k}" class="${(a.ph||S.ui.ph||'b')===k?'on':''}" onclick="setPh(${i},'${k}')">${t}</button>`).join('')}</div>
+   <label style="color:#333"><input type="checkbox" id="gAll" style="width:auto"> ใช้ขนาดและ HDG นี้กับทุกกล่อง LEG</label>
+   <button class="pri" onclick="if($('gAll').checked){const v=$('gS').value/100,h=S.pts[${i}].ph||S.ui.ph||'b';S.pts.forEach(p=>{p.psc=v;delete p.ph});S.ui.ph=h}closeEd();draw()">บันทึก</button><button onclick="['psc','poff','ph'].forEach(k=>delete S.pts[${i}][k]);closeEd();draw()">คืนค่าเดิม</button>`)}
+function setPh(i,k){S.pts[i].ph=k;['l','r','b'].forEach(x=>$('gH'+x).classList.toggle('on',x===k));draw()}
 function popForm(ll,html){if(isSheet()&&edPrev===null){const b=document.body.classList;edPrev=b.contains('full')?'full':b.contains('hide')?'hide':'';b.remove('full','hide');b.add('editing');togTxt();setTimeout(()=>map.invalidateSize(),50)}const e=$('edp');e.innerHTML=`<div class="pop"><div class="edh">${isSheet()?'':'<span class="grip" title="ลากเพื่อย้ายกล่อง">⠿ ลากย้าย</span>'}<button title="ย้ายไปอีกด้าน" onclick="edPos=null;edPlace();$('edp').classList.toggle('lft')">⇆</button><button title="ปิด" onclick="closeEd()">✕</button></div>${html}</div>`;e.style.width=isSheet()&&!isPh()?$('side').offsetWidth+'px':'';e.style.display='block';edPlace()}
 // desktop: drag the editor by its header; position is kept for later opens
 let edPos=null;
@@ -583,9 +585,9 @@ function list(L_,tot,tmin){
   profile(L_);$('stD').textContent=tot.toFixed(1)+' NM';$('stT').textContent=hm(tmin);$('stN').textContent=S.pts.length;}
 // reverse: leg data (box pos, overrides, alt, box style) belongs to the leg's start point, so shift it to the new start
 function revPts(){const n=S.pts.length;if(n<2)return;
-  const legd=S.pts.slice(0,-1).map(p=>({box:p.box,boff:p.boff,poff:p.poff,psc:p.psc,ov:p.ov?{...p.ov,crs:''}:undefined,alt:p.alt,bx:p.bx,bsc:p.bsc,ln:p.ln,lw:p.lw}));
+  const legd=S.pts.slice(0,-1).map(p=>({box:p.box,boff:p.boff,poff:p.poff,psc:p.psc,ph:p.ph,ov:p.ov?{...p.ov,crs:''}:undefined,alt:p.alt,bx:p.bx,bsc:p.bsc,ln:p.ln,lw:p.lw}));
   S.pts.reverse();S.pts.forEach(p=>{if(p.tf==='PZ')p.tf='LZ';else if(p.tf==='LZ')p.tf='PZ'}); // chosen PZ/LZ swap ends too
-  S.pts.forEach((p,j)=>{const d=j<n-1?legd[n-2-j]:{box:undefined,boff:undefined,poff:undefined,psc:undefined,ov:undefined,alt:'',bx:undefined,bsc:undefined,ln:undefined,lw:undefined};Object.assign(p,d)});
+  S.pts.forEach((p,j)=>{const d=j<n-1?legd[n-2-j]:{box:undefined,boff:undefined,poff:undefined,psc:undefined,ph:undefined,ov:undefined,alt:'',bx:undefined,bsc:undefined,ln:undefined,lw:undefined};Object.assign(p,d)});
   const f=S.pts[0],z=S.pts[n-1];if(kind(f.type)==='LZ'&&kind(z.type)==='PZ'){f.type='PZ'+f.type.slice(2);z.type='LZ'+z.type.slice(2);[f.lcol,z.lcol]=[z.lcol,f.lcol];const dc=[COL.PZ,COL.LZ].map(c=>c.toLowerCase());[f,z].forEach(p=>{if(p.lcol==null||dc.includes(String(p.lcol).toLowerCase()))delete p.lcol})}
 }
 function reverseRoute(){if(S.pts.length<2)return;revPts();if(S.alt&&S.alt.length>1){[S.pts,S.alt]=[S.alt,S.pts];revPts();[S.pts,S.alt]=[S.alt,S.pts]}draw()}
