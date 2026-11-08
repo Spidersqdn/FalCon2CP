@@ -707,7 +707,7 @@ async function expAs(f){$('expM').classList.remove('on');if(!S.pts.length)return
   if(f==='csv'){const q=v=>{v=String(v??'');return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
     return dl('route.csv','route,type,name,lat,lon,alt_ft\n'+routesOut().flatMap(([n,P])=>P.map(p=>[n,p.type,p.name,p.lat,p.lon,p.alt].map(q).join(','))).join('\n'),'text/csv')}}
 // ---- SLIDE: 16:9 "MISSION OVERVIEW" briefing PNG (3200x1800 = 1600x900 design units x2) ----
-const SL_F=['route','dist','alt','msa','speed','ete','code'],SL_FONT='"TH SarabunPSK","TH Sarabun New",MapSar,Sarabun,Tahoma,sans-serif';
+const SL_F=['ttl','route','dist','alt','msa','speed','ete','code'],SL_FONT='"TH SarabunPSK","TH Sarabun New",MapSar,Sarabun,Tahoma,sans-serif';
 let slK=1,slBg=null;
 function slRoute(){const R=routesOut();return R.length?R[0][1]:S.pts} // primary route
 function slAuto(){const P=slRoute(),f=P[0],z=P[P.length-1],kt=+$('kt').value||120;
@@ -724,8 +724,8 @@ function slFill(all){const a=slAuto();Object.keys(a).forEach(k=>$('sl_'+k).value
 async function openSlide(){if(S.pts.length<2)return alert('ต้องมี waypoint อย่างน้อย 2 จุดก่อนทำ SLIDE');
   if(!$('sld')){document.body.insertAdjacentHTML('beforeend',`<div id="sld"><div class="sbox">
     <div class="shd"><b>SLIDE · MISSION OVERVIEW</b><button onclick="$('sld').remove()">✕</button></div>
-    <div class="sfm">${[['route','เส้นทางบิน'],['dist','ระยะทาง (NM)'],['alt','ความสูงบิน (ft)'],['msa','MSA (ft)'],['speed','ความเร็ว (kt)'],['ete','ใช้เวลา (นาที)'],['code','ICAO (DEP - DEST)']]
-      .map(([k,t])=>`<label class="${k==='route'?'w':''}">${t}<input id="sl_${k}" onchange="slSave()"></label>`).join('')}</div>
+    <div class="sfm">${[['ttl','หัวเรื่อง (ว่าง = เส้นทางบิน)'],['route','เส้นทางบิน'],['dist','ระยะทาง (NM)'],['alt','ความสูงบิน (ft)'],['msa','MSA (ft)'],['speed','ความเร็ว (kt)'],['ete','ใช้เวลา (นาที)'],['code','ICAO (DEP - DEST)']]
+      .map(([k,t])=>`<label class="${k==='route'||k==='ttl'?'w':''}">${t}<input id="sl_${k}" onchange="slSave()"></label>`).join('')}</div>
     <div class="sbt"><button class="pri" onclick="slSave();buildSlide()">อัปเดต</button><button onclick="slPng()">บันทึก PNG</button><button onclick="slShare()">แชร์</button><button onclick="slFill(true)">ค่าเริ่มต้น</button></div>
     <canvas id="slC" width="3200" height="1800"></canvas></div></div>`)}
   const o=slLoad();SL_F.forEach(k=>{if(o[k]!=null)$('sl_'+k).value=o[k]});
@@ -769,7 +769,7 @@ async function buildSlide(){const cv=$('slC');if(!cv)return;const c=cv.getContex
   const bx=(x,y,w,h,f,ln)=>{c.fillStyle=f;c.fillRect(x,y,w,h);if(ln){c.lineWidth=ln[1];c.strokeStyle=ln[0];c.strokeRect(x+ln[1]/2,y+ln[1]/2,w-ln[1],h-ln[1])}};
   c.save();c.shadowColor='rgba(0,0,0,.35)';c.shadowBlur=12;c.shadowOffsetY=3;c.fillStyle=NV;c.fillRect(X,y,W,TH);c.restore();const y0=y;
   bx(X,y,W,HH,NV);slTxt(c,'ENROUTE / DIST / ALT / SPEED / ETE',X+W/2,y+HH/2,24);y+=HH;
-  bx(X,y,W,RB,NV);slTxt(c,'เส้นทางบิน',X+W/2,y+RB*.3,23,{b:true});slTxt(c,v('route')||'-',X+W/2,y+RB*.72,23,{b:true});y+=RB;
+  bx(X,y,W,RB,NV);slTxt(c,v('ttl')||'เส้นทางบิน',X+W/2,y+RB*.3,23,{b:true});slTxt(c,v('route')||'-',X+W/2,y+RB*.72,23,{b:true});y+=RB;
   const rows=[['ระยะทาง',v('dist'),'ไมล์ทะเล'],['ความสูงบิน',v('alt'),'ฟุต'],['MSA',v('msa'),'ฟุต'],['ความเร็ว',v('speed'),'นอต'],['ใช้เวลา',v('ete'),'นาที']];
   bx(X,y,W,DB,ND);rows.forEach(([l,val,u],i)=>{const yy=y+8+i*RH+RH/2;slTxt(c,l,X+22,yy,21,{al:'l'});slTxt(c,val?val+(num(val)?' '+u:''):'-',X+W*.37,yy,21,{al:'l'})});y+=DB;
   bx(X,y,W,BB,ND);slTxt(c,'เส้นทางบิน : '+(v('code')||'-'),X+22,y+BB/2,21,{al:'l'});
