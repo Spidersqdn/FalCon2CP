@@ -23,7 +23,7 @@ async function appFetch(r){const c=await caches.open(APP);
 async function tileFetch(r){const c=await caches.open(TILES),hit=await c.match(r.url);if(hit)return hit;
   const res=await fetch(r.url,{mode:'cors'});if(res.ok&&offline)c.put(r.url,res.clone());return res}
 // PMTiles: store each byte range as its own entry; 206 cannot be cached directly.
-// pmtiles.js asks with cache:'reload' after an ETag mismatch (file replaced on R2): skip the cache then and
+// pmtiles.js asks with cache:'reload' after an ETag mismatch (file replaced on the server): skip the cache then and
 // drop the old file's ranges, otherwise the stale header is served forever and the map never loads.
 const rkey=(u,range)=>u+(u.includes('?')?'&':'?')+'__range='+encodeURIComponent(range);
 async function rangeFetch(r,range){const c=await caches.open(TILES),key=rkey(r.url,range),fresh=r.cache==='reload'||r.cache==='no-store';

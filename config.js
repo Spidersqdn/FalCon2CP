@@ -1,4 +1,4 @@
-// แก้บรรทัดนี้ให้เป็น URL ของแผนที่บน Cloudflare R2 (Public URL ของ bucket + /map.pmtiles)
+// URL แผนที่ online: GitHub Pages ของ repo DataBase (ไฟล์อยู่ใน Release `falcon2cp-maps`)
 // เพิ่ม/แก้รายการแผนที่ใน MAPS (แสดงเป็นตัวเลือกในเว็บ)
 window.CONFIG = {
   MAP_URL: "https://spidersqdn.github.io/DataBase/FalCon2CP/map250k.pmtiles",
