@@ -869,6 +869,7 @@ const printPages=()=>previewPages('print'),exportPDF=()=>previewPages('pdf');
 addEventListener('afterprint',()=>{document.body.classList.remove('prtmode');prUpd()});
 // ---- init ----
 const qm=new URLSearchParams(location.search).get('map')||(window.CONFIG&&CONFIG.MAP_URL);
+if(S.cfg&&/\.r2\.dev\//.test(S.cfg.url||''))S.cfg.url=S.cfg.url.replace(/^https:\/\/[^/]+\.r2\.dev\//,'https://spidersqdn.github.io/DataBase/FalCon2CP/'); // maps moved off R2 (2026-11)
 if(S.cfg){$('tileUrl').value=S.cfg.url||$('tileUrl').value;$('tms').checked=!!S.cfg.tms;$('kt').value=S.cfg.kt&&S.cfg.kt!='90'?S.cfg.kt:120;if(S.cfg.osm)$('tileUrl').value=OSM}
 if(S.pr){$('pS').value=S.pr.S;$('pP').value=S.pr.P;$('pO').value=S.pr.O;$('pOv').value=S.pr.ov;$('pM').value=S.pr.m;$('pLb').checked=S.pr.lb!==false}else if(/500k/i.test($('tileUrl').value))$('pS').value='500000';
 $('offl').checked=S.ui.off;

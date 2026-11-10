@@ -1,6 +1,6 @@
 # เอา Route Map ขึ้นเว็บ (แผนที่ทั้งชุด 3 GB)
 
-แนวทาง: แปลงแผนที่เป็น **ไฟล์เดียว `map.pmtiles`** แล้วเอาขึ้น **Cloudflare R2** (ฟรีถึง 10 GB [Unverified: เช็คราคาล่าสุด])
+แนวทาง: แปลงแผนที่เป็น **ไฟล์เดียว `map.pmtiles`** แล้วเอาขึ้น **GitHub Pages ของ repo DataBase**
 browser จะดึงเฉพาะส่วนที่ดูอยู่ ไม่ต้องโหลดทั้ง 3 GB
 
 ## A) สร้าง map.pmtiles (เลือก 1 วิธี)
@@ -18,20 +18,15 @@ browser จะดึงเฉพาะส่วนที่ดูอยู่ �
 make_pmtiles.bat "C:\...\RPF\A.TOC"
 ```
 
-## B) เอาขึ้น Cloudflare R2
-1. สมัคร cloudflare.com > R2 > **Create bucket** ชื่อ `routemap`
-2. Bucket > Settings > **Public access: r2.dev subdomain = Allow** (จะได้ URL `https://pub-xxxx.r2.dev`)
-3. อัปโหลดผ่านหน้าเว็บ (ลากวาง): `index.html` และโฟลเดอร์ `lib/`
-4. `map.pmtiles` ไฟล์ใหญ่ ให้ใช้ rclone
-   - R2 > Manage API tokens > Create (Object Read & Write) > จด Access Key / Secret / Account ID
-   - `rclone config` > new remote ชื่อ `r2` > type `s3` > provider `Cloudflare` > ใส่ key > endpoint `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`
-   ```
-   rclone copy map.pmtiles r2:routemap -P --s3-chunk-size 100M
-   ```
-5. เปิด `https://pub-xxxx.r2.dev/index.html` ใช้งานได้ทุกเครื่อง
+## B) เอาขึ้น online (repo DataBase, GitHub Pages)
+1. github.com/Spidersqdn/DataBase > Releases > `falcon2cp-maps` > Edit
+2. ลบไฟล์เก่า (ถ้ามี) แล้วลากไฟล์ `.pmtiles` ใหม่ใส่ > Update release
+3. Actions > **Build offline map and deploy** > Run workflow
+4. ไฟล์จะอยู่ที่ `https://spidersqdn.github.io/DataBase/FalCon2CP/<ชื่อไฟล์>.pmtiles` (ถ้าเป็นไฟล์ใหม่ ให้เพิ่ม URL ใน `config.js`)
+- ข้อจำกัด: ไฟล์ละไม่เกิน 2 GB, ทั้งเว็บ DataBase ไม่เกิน 1 GB (ตอนนี้ใช้ ~660 MB), 1:50k ไม่เอาขึ้น online
 
 ## ความปลอดภัย
-- r2.dev = ใครมีลิงก์ก็เปิดได้ ถ้าต้องจำกัดคน ใช้ custom domain + Cloudflare Access (ฟรี 50 users) [Unverified]
+- GitHub Pages = สาธารณะ ใครมีลิงก์ก็เปิดได้
 - เส้นทางที่วาด **ไม่ถูกอัปโหลด** เก็บใน browser ของแต่ละเครื่องเท่านั้น (ส่งต่อด้วย Export CSV/KML)
 - ตรวจสอบสิทธิ์การเผยแพร่แผนที่ CADRG กับหน่วยก่อน
 
