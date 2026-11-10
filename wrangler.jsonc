@@ -1,0 +1,7 @@
+// Cloudflare Workers Builds (project "falcontocp"): serve this repo as static files.
+// Without this file, PR preview builds (wrangler versions upload) fail.
+{
+  "name": "falcontocp",
+  "compatibility_date": "2026-11-01",
+  "assets": { "directory": "." }
+}
