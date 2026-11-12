@@ -217,7 +217,9 @@ body{height:100dvh}
    <div style="display:flex;gap:4px;align-items:center"><button onclick="pvStep(-1)" style="width:auto">−</button><input id="pvP" type="number" min="10" max="400" step="5" value="100" onchange="pvSet(+this.value)" style="width:64px;text-align:center"><span>%</span><button onclick="pvStep(1)" style="width:auto">+</button><button onclick="pvSet(100)" style="width:auto">100%</button></div></div>
   <div class="sm">มุมมองกระดาษ: 100% = ขนาดเท่ากระดาษจริง (ตามมาตรฐานจอ 96 px/นิ้ว) · ล้อเมาส์/ปุ่ม −/+ = ย่อ/ขยาย % · จัดป้าย/กล่องได้ตามที่จะพิมพ์</div>
   <button onclick="prShow=!prShow;prUpd();if(prShow&&pgGrp.getLayers().length)map.fitBounds(L.featureGroup(pgGrp.getLayers()).getBounds())">แสดง/ซ่อนกรอบแผ่นบนแผนที่</button>
-  <div class="sm">ลากเลขแผ่นสีแดง (✥) บนแผนที่เพื่อขยับส่วนที่จะพิมพ์ของแต่ละแผ่น <button onclick="S.prOff={};prUpd()" style="width:auto;padding:2px 8px">รีเซ็ตตำแหน่งแผ่น</button></div>
+  <div class="sm">ลากเลขแผ่นสีแดง (✥) บนแผนที่เพื่อขยับส่วนที่จะพิมพ์</div>
+  <div class="seg" style="margin:4px 0"><button id="pmOne" onclick="pmSet(0)">เลื่อนแผ่นเดียว</button><button id="pmAll" onclick="pmSet(1)">เลื่อนทั้งหมด</button></div>
+  <div class="sm"><button onclick="S.prOff={};prUpd()" style="width:auto;padding:2px 8px">รีเซ็ตตำแหน่งแผ่น</button></div>
   <div class="row"><button class="pri" onclick="exportPDF()">Export PDF</button><button onclick="printPages()">Print</button></div>
   <div class="sm">Export PDF = ไฟล์ขนาดจริง ใช้ได้ทุกเครื่อง (iPad แนะนำ) · ตอนพิมพ์ PDF ตั้ง Scale 100% / Actual size (ห้าม Fit to page) · เส้นประแดง = แนวขอบแผ่นข้างเคียง ใช้ต่อแผ่น</div>
  </fieldset>
@@ -821,12 +823,15 @@ function prUpd(){if(!$('pS'))return;const {c,pages,nr,nc}=prPages();
   $('pFi').textContent=c.f!==100?'= 1:'+c.S.toLocaleString():'';
   S.pr={S:$('pS').value,F:$('pF').value,P:$('pP').value,O:$('pO').value,ov:$('pOv').value,m:$('pM').value,lb:$('pLb').checked};save();
   pgGrp.clearLayers();if(!prShow)return;
-  pages.forEach((p,i)=>{const rc=L.rectangle(p.b,{color:'#d00',weight:2,fill:true,fillOpacity:.04,dashArray:'6 4',interactive:false}).addTo(pgGrp);
+  const rcs=[];pages.forEach((p,i)=>{const rc=L.rectangle(p.b,{color:'#d00',weight:2,fill:true,fillOpacity:.04,dashArray:'6 4',interactive:false}).addTo(pgGrp);rcs.push(rc);
     // drag the page number to move what this sheet prints
     const bnd=ll=>{const q=MERC.project(ll);return [MERC.unproject(L.point(q.x-p.W/2,q.y-p.H/2)),MERC.unproject(L.point(q.x+p.W/2,q.y+p.H/2))]};
     L.marker(p.center,{draggable:true,zIndexOffset:900,icon:L.divIcon({className:'',iconSize:null,html:`<span class="pgn" style="cursor:move" title="ลากเพื่อขยับแผ่นนี้">✥ ${i+1}</span>`})}).addTo(pgGrp)
-     .on('drag',e=>rc.setBounds(bnd(e.target.getLatLng())))
-     .on('dragend',e=>{const q=MERC.project(e.target.getLatLng());S.prOff=Object.assign(S.prOff||{},{[p.r+'_'+p.c]:[q.x-p.g[0],q.y-p.g[1]]});prUpd()})})}
+     .on('drag',e=>{const q=MERC.project(e.target.getLatLng()),o=MERC.project(p.center),dx=q.x-o.x,dy=q.y-o.y;
+       (S.ui.prAll?pages:[p]).forEach(t=>{const c0=MERC.project(t.center);rcs[pages.indexOf(t)].setBounds(bnd(MERC.unproject(L.point(c0.x+dx,c0.y+dy))))})})
+     .on('dragend',e=>{const q=MERC.project(e.target.getLatLng()),o=MERC.project(p.center),dx=q.x-o.x,dy=q.y-o.y,off=S.prOff=S.prOff||{};
+       (S.ui.prAll?pages:[p]).forEach(t=>{const k=t.r+'_'+t.c,v=off[k]||[0,0];off[k]=[v[0]+dx,v[1]+dy]});prUpd()})})}
+function pmSet(a){S.ui.prAll=!!a;$('pmOne').classList.toggle('on',!a);$('pmAll').classList.toggle('on',!!a);save()}
 // ---- PAPER VIEW: map shown at the print zoom (true paper proportions), scaled on screen by pct ----
 let pvOn=false;const pvInv=map.invalidateSize.bind(map),mEl=$('map');
 const pvPct=()=>Math.min(400,Math.max(10,+S.ui.pvp||100));
@@ -907,6 +912,7 @@ const qm=new URLSearchParams(location.search).get('map')||(window.CONFIG&&CONFIG
 if(S.cfg&&/\.r2\.dev\//.test(S.cfg.url||''))S.cfg.url=S.cfg.url.replace(/^https:\/\/[^/]+\.r2\.dev\//,'https://spidersqdn.github.io/DataBase/FalCon2CP/'); // maps moved off R2 (2026-11)
 if(S.cfg){$('tileUrl').value=S.cfg.url||$('tileUrl').value;$('tms').checked=!!S.cfg.tms;$('kt').value=S.cfg.kt&&S.cfg.kt!='90'?S.cfg.kt:120;if(S.cfg.osm)$('tileUrl').value=OSM}
 if(S.pr){$('pS').value=S.pr.S;$('pF').value=S.pr.F||100;$('pP').value=S.pr.P;$('pO').value=S.pr.O;$('pOv').value=S.pr.ov;$('pM').value=S.pr.m;$('pLb').checked=S.pr.lb!==false}else if(/500k/i.test($('tileUrl').value))$('pS').value='500000';
+pmSet(S.ui.prAll);
 $('offl').checked=S.ui.off;
 if(!S.pts.length&&!localStorage.getItem('routeS'))S.pts=[{type:'PZ',name:'ท่าอากาศยานร้อยเอ็ด',lat:16.1168,lon:103.7741,alt:'1100'},{type:'CP2',name:'สนาม ฮ. พล.ร.6',lat:16.105,lon:103.545,alt:'1100'},{type:'LZ',name:'สนาม ฮ. รร.สารคามพิทยาคม',lat:16.184,lon:103.3,alt:''}];
 if(new URLSearchParams(location.search).get('map')||!S.cfg||!/^(https?|local):/.test($('tileUrl').value))$('tileUrl').value=qm||$('tileUrl').value;
