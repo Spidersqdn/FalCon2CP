@@ -191,7 +191,7 @@ body{height:100dvh}
   <div class="sm">ชื่อจุด / Remark</div><input id="fName" style="width:100%" placeholder="เช่น สนาม ฮ. พล.ร.6">
   <div class="row" style="margin-top:8px"><button class="pri" onclick="addFromForm()">Add ROUTE</button></div>
   <div class="sm" id="modeHint"></div>
-  <div class="row"><span class="sm" style="flex:none" id="lineLb">เส้นทาง</span><select id="lineSt" onchange="setLine(this.value)"><option value="solid">เส้นทึบ</option><option value="dash">เส้นประ</option></select></div>
+  <div class="row"><span class="sm" style="flex:none" id="lineLb">เส้นทาง</span><select id="lineSt" onchange="setLine(this.value)"><option value="solid">เส้นทึบ</option><option value="dash">เส้นประ</option></select><span class="sm" style="flex:none">Tic mark</span><select id="tickSt" onchange="S.ui.tick=+this.value;draw()" title="ขีดบอกระยะบนเส้นทาง นับใหม่ทุกจุด FLY OVER"><option value="0">ไม่มี</option><option value="5">ทุก 5 NM</option><option value="10">ทุก 10 NM</option></select></div>
   <div class="sm">ขนาดเส้นทางบิน</div><div id="lwBox"></div>
   <div class="sm">ขนาด Waypoint</div><div id="msBox"></div>
   <div class="sm">ขนาด DOG LEGs</div><div id="bsBox"></div>
@@ -308,6 +308,17 @@ const pad3=x=>String(Math.round(x)%360).padStart(3,'0');
 const has=v=>v!==undefined&&v!==null&&String(v).trim()!=='';
 function parseT(t){if(!has(t))return null;const m=/^(\d+):(\d{1,2})$/.exec(String(t).trim());return m?+m[1]*60+ +m[2]:isNaN(+t)?null:+t}
 // leg values: computed, then user overrides from the leg box (a.ov)
+// largest-remainder rounding: whole numbers whose sum equals the rounded total
+function nmInt(a){const T=Math.round(a.reduce((s,x)=>s+x,0)),f=a.map(x=>Math.floor(x));let k=T-f.reduce((s,x)=>s+x,0);
+  a.map((x,i)=>[x-f[i],i]).sort((p,q)=>q[0]-p[0]).forEach(([,i])=>{if(k>0){f[i]++;k--}});return f}
+// tic marks every S.ui.tick NM along the route; the count restarts at the start and at every FLY OVER point (FLY BY continues)
+function drawTicks(g,anf){const D=+S.ui.tick||0;if(!D||S.pts.length<2)return;const M=g._map||map,z=M.getZoom();let acc=0;
+  S.pts.slice(1).forEach((b,i)=>{const a=S.pts[i];if(i===0||a.fly!=='by')acc=0;const nm=legCalc(a,b).nm;if(!(nm>0))return;
+    const pa=M.project([LA(a),LO(a)],z),pb=M.project([LA(b),LO(b)],z),d=pb.subtract(pa),len=d.distanceTo([0,0])||1,u=d.divideBy(len),nx=-u.y,ny=u.x;
+    const ra=anf?RING*(a.msc||S.ui.msc||1):0,rb=anf?RING*(b.msc||S.ui.msc||1):0,w=a.lw||S.ui.lw||3*(S.ui.lwc||1),h=6+w;
+    for(let t=D-(acc%D);t<nm-1e-6;t+=D){const p=pa.add(d.multiplyBy(t/nm)),dp=t/nm*len;if(dp<ra||len-dp<rb)continue;
+      L.polyline([M.unproject(p.add(L.point(nx*h,ny*h)),z),M.unproject(p.subtract(L.point(nx*h,ny*h)),z)],{color:'#000',weight:Math.max(2,w*0.7),interactive:false}).addTo(g)}
+    acc+=nm})}
 function legs(){eff();const kt=+$('kt').value||120;
   const L_=S.pts.slice(1).map((b,i)=>{const a=S.pts[i],c=legCalc(a,b),o=a.ov||{};
     const crs=c.tc;
@@ -430,6 +441,8 @@ function render(g,ro,other){const L_=legs(),n=S.pts.length,anf=S.ui.style==='anf
   const ed=fn=>()=>{if(other)setRoute(isAlt?'alt':'main');fn()}; // editing an item of the other route switches to that route first // top-left table cell names the route
   const CTR=S.pts.length?[S.pts.reduce((s,p)=>s+p.lat,0)/S.pts.length,S.pts.reduce((s,p)=>s+p.lon,0)/S.pts.length]:[0,0];
   const tot=L_.reduce((s,l)=>s+l.nm,0),tmin=L_.reduce((s,l)=>s+l.min,0),seen=new Set(),seenL=new Set();let cn=0,cm=0;
+  const NI=nmInt(L_.map(l=>l.nm)); // whole-NM leg distances that add up to the rounded total
+  drawTicks(g,anf);
   // legs first so markers sit on top
   L_.forEach((l,i)=>{const a=S.pts[i],b=S.pts[i+1];if(anf&&wkey(a)===wkey(b))return; // repeated waypoint: no zero-length leg / box
     const dash=(a.ln||(isAlt?S.ui.lineAlt||'dash':S.ui.line||'solid'))==='dash'?'10 8':null; // per-leg style wins; else alternate = dashed, primary = global setting (solid by default)
@@ -461,7 +474,7 @@ function render(g,ro,other){const L_=legs(),n=S.pts.length,anf=S.ui.style==='anf
     const hd=l.crsTxt,rc=pad3(l.crsNum+180);
     // eastbound legs: turn the box 180° so text stays upright; head (HDG) end then sits on the right.
     // NM / time / ALT always read left to right in that order
-    const flip=l.tc<180,lt=flip?bo.t:bo.h,rt=flip?bo.h:bo.t,mid3=[Math.round(l.nm*10)/10+' NM',hm(l.min),has(l.alt)?l.alt+"'":'-'];
+    const flip=(l.tc<180)!==!!a.bfl,lt=flip?bo.t:bo.h,rt=flip?bo.h:bo.t,mid3=[NI[i]+' NM',hm(l.min),has(l.alt)?l.alt+"'":'-'];
     const vals=mid3; // HDG / reciprocal live only in their triangles; a removed triangle drops its value too
     const cells=vals.map((t,k)=>`<div class="c${k===0&&!lt?' f':''}${k===vals.length-1&&rt?' l':''}" style="border-color:${bc}"><span>${esc(t)}</span></div>`).join('');
     const tipLen=Math.max(bo.h?String(hd).length:0,bo.t&&rc?rc.length:0);
@@ -472,7 +485,7 @@ function render(g,ro,other){const L_=legs(),n=S.pts.length,anf=S.ui.style==='anf
     bx.on('dragend',e=>{const q=e.target.getLatLng();a.boff=[q.lat-mid[0],q.lng-mid[1]];draw()});
     bx.on('click',ed(()=>editBox(i,a.box)));
   });
-  S.pts.forEach((p,i)=>{ if(i>0){cn+=L_[i-1].nm;cm+=L_[i-1].min}
+  S.pts.forEach((p,i)=>{ if(i>0){cn+=NI[i-1];cm+=L_[i-1].min}
     if(p._la!=null){L.polyline([[p.lat,p.lon],[p._la,p._lo]],{color:'#000',weight:1.5,dashArray:'4 4',interactive:false}).addTo(g);
       L.circleMarker([p._la,p._lo],{radius:3,color:'#000',weight:1.5,fillColor:'#fff',fillOpacity:1,interactive:false}).addTo(g)}
     const first=i===0,last=i===n-1,ms=p.msc||S.ui.msc||1,sz=(anf?RING*2:26)*ms;const skipMk=noEnds&&(first||last);
@@ -535,6 +548,7 @@ function editBox(i,ll){const a=S.pts[i],o=a.ov||{},l=legs()[i];
    <label>ALT ft (ว่าง = อัตโนมัติจากภูมิประเทศ)</label><input id="eA" value="${esc(o.alt)}" placeholder="${esc(autoAlt(a,S.pts[i+1])??a.alt??'')}">
    <label>สีกรอบ</label><input id="eK" type="color" value="${o.col||'#1F4E79'}">
    ${(b=>`<label style="color:#333"><input type="checkbox" id="bH" ${b.h?'checked':''} style="width:auto"> สามเหลี่ยมหัว</label><label style="color:#333"><input type="checkbox" id="bT" ${b.t?'checked':''} style="width:auto"> สามเหลี่ยมท้าย</label>`)(Object.assign({h:true,t:true},a.bx||{}))}
+   <label style="color:#333"><input type="checkbox" id="bF" ${a.bfl?'checked':''} style="width:auto" onchange="S.pts[${i}].bfl=this.checked;draw()"> กลับด้าน DOG LEG 180°</label>
    <label>เส้น leg นี้</label><select id="eLn" onchange="S.pts[${i}].ln=this.value;draw()" style="width:100%"><option value="">ตามค่าหลัก</option><option value="solid" ${a.ln==='solid'?'selected':''}>เส้นทึบ</option><option value="dash" ${a.ln==='dash'?'selected':''}>เส้นประ</option></select>
    <label>ความหนาเส้น leg (px)</label><div class="pct"><input id="eW" type="range" min="1" max="12" step="0.5" value="${a.lw||S.ui.lw||(S.ui.style==='anf'?4:3)*(S.ui.lwc||1)}" oninput="$('eWn').value=this.value;S.pts[${i}].lw=+this.value;draw()"><input id="eWn" type="number" min="0.5" max="30" step="0.5" value="${a.lw||S.ui.lw||(S.ui.style==='anf'?4:3)*(S.ui.lwc||1)}" oninput="if(this.value>0){$('eW').value=this.value;S.pts[${i}].lw=+this.value;draw()}"><span>px</span></div>
    <label>ขนาดกล่อง</label>${pctIn('bS',(a.bsc||S.ui.bsc||1)*100,`S.pts[${i}].bsc=this.value/100;draw()`)}
@@ -655,10 +669,10 @@ function addFromForm(){if(S.ui.mode==='map')return alert('โหมด On MAP: �
 function setMode(m){S.ui.mode=m;$('mOn').classList.toggle('on',m==='map');$('mLL').classList.toggle('on',m==='ll');$('llBox').style.display=m==='ll'?'':'none';
   $('modeHint').textContent=m==='map'?'คลิกบนแผนที่เพื่อเพิ่มจุดด้วยค่าในฟอร์มนี้':'กรอกพิกัดแล้วกด Add ROUTE';
   map.getContainer().style.cursor=m==='map'?'crosshair':'';save()}
-function lineSel(){const a=(S.ui.route||'main')==='alt';$('lineSt').value=a?S.ui.lineAlt||'dash':S.ui.line||'solid';$('lineLb').textContent=a?'เส้นทางสำรอง':'เส้นทางหลัก'}
+function lineSel(){const a=(S.ui.route||'main')==='alt';$('lineSt').value=a?S.ui.lineAlt||'dash':S.ui.line||'solid';$('lineLb').textContent=a?'เส้นทางสำรอง':'เส้นทางหลัก';$('tickSt').value=S.ui.tick||0}
 function setLine(v){if((S.ui.route||'main')==='alt')S.ui.lineAlt=v;else S.ui.line=v;draw()}
 function setStyle(s,user){S.ui.style=s;if(user){S.ui.line='solid';delete S.ui.lineAlt}lineSel();$('sA').classList.toggle('on',s==='anf');$('sC').classList.toggle('on',s==='cp');syncShow();draw()}
-map.on('zoomend',()=>{if(S.ui.style==='anf')draw()});
+map.on('zoomend',()=>{if(S.ui.style==='anf'||S.ui.tick)draw()});
 map.on('click',e=>{if($('edp').style.display==='block'){closeEd();return}if(S.ui.mode==='map')addPt(e.latlng.lat,e.latlng.lng)});
 $('kt').oninput=draw;
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'&&!/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)){e.preventDefault();undo()}});
