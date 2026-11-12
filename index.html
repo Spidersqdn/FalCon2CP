@@ -208,14 +208,16 @@ body{height:100dvh}
   <div class="row"><div><div class="sm">มาตราส่วน 1:</div><select id="pS" onchange="prUpd();pvApply()"><option value="50000">50,000<option value="100000">100,000<option value="250000" selected>250,000<option value="500000">500,000<option value="1000000">1,000,000</select></div>
    <div><div class="sm">กระดาษ</div><select id="pP" onchange="prUpd()"><option>A4<option>A3</select></div>
    <div><div class="sm">แนว</div><select id="pO" onchange="prUpd()"><option value="p">ตั้ง<option value="l">นอน</select></div></div>
+  <div class="row"><div><div class="sm">Scale factor (%)</div><input id="pF" type="number" value="100" min="10" max="1000" step="5" title="ขยาย/ย่อจากมาตราส่วนแผนที่ เช่น 150% ของ 1:250,000 = 1:166,667" onchange="prUpd();pvApply()"></div><div class="sm" id="pFi" style="align-self:end;padding-bottom:6px"></div></div>
   <div class="row"><div><div class="sm">ทับขอบ (ซม.)</div><input id="pOv" type="number" value="1" min="1" step="0.5" onchange="prUpd()"></div>
    <div><div class="sm">ขอบเครื่องพิมพ์ (มม.)</div><input id="pM" type="number" value="6" min="0" onchange="prUpd()"></div></div>
   <label><input type="checkbox" id="pLb" checked onchange="prUpd()"> พิมพ์เลขแผ่น + scale bar ที่ขอบล่าง (นอกแผนที่)</label>
   <div class="sm" id="pInfo">-</div>
-  <div class="row" style="align-items:center"><button id="pvB" onclick="pvToggle()" title="แสดงแผนที่เท่ากระดาษจริงที่มาตราส่วนนี้ ป้าย/กล่อง/ตัวอักษรจะมีขนาดเทียบกับแผนที่เหมือนตอนพิมพ์">📄 มุมมองกระดาษ</button>
+  <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center"><button id="pvB" style="flex:1 1 140px" onclick="pvToggle()" title="แสดงแผนที่เท่ากระดาษจริงที่มาตราส่วนนี้ ป้าย/กล่อง/ตัวอักษรจะมีขนาดเทียบกับแผนที่เหมือนตอนพิมพ์">📄 มุมมองกระดาษ</button>
    <div style="display:flex;gap:4px;align-items:center"><button onclick="pvStep(-1)" style="width:auto">−</button><input id="pvP" type="number" min="10" max="400" step="5" value="100" onchange="pvSet(+this.value)" style="width:64px;text-align:center"><span>%</span><button onclick="pvStep(1)" style="width:auto">+</button><button onclick="pvSet(100)" style="width:auto">100%</button></div></div>
   <div class="sm">มุมมองกระดาษ: 100% = ขนาดเท่ากระดาษจริง (ตามมาตรฐานจอ 96 px/นิ้ว) · ล้อเมาส์/ปุ่ม −/+ = ย่อ/ขยาย % · จัดป้าย/กล่องได้ตามที่จะพิมพ์</div>
   <button onclick="prShow=!prShow;prUpd();if(prShow&&pgGrp.getLayers().length)map.fitBounds(L.featureGroup(pgGrp.getLayers()).getBounds())">แสดง/ซ่อนกรอบแผ่นบนแผนที่</button>
+  <div class="sm">ลากเลขแผ่นสีแดง (✥) บนแผนที่เพื่อขยับส่วนที่จะพิมพ์ของแต่ละแผ่น <button onclick="S.prOff={};prUpd()" style="width:auto;padding:2px 8px">รีเซ็ตตำแหน่งแผ่น</button></div>
   <div class="row"><button class="pri" onclick="exportPDF()">Export PDF</button><button onclick="printPages()">Print</button></div>
   <div class="sm">Export PDF = ไฟล์ขนาดจริง ใช้ได้ทุกเครื่อง (iPad แนะนำ) · ตอนพิมพ์ PDF ตั้ง Scale 100% / Actual size (ห้าม Fit to page) · เส้นประแดง = แนวขอบแผ่นข้างเคียง ใช้ต่อแผ่น</div>
  </fieldset>
@@ -794,7 +796,8 @@ async function slShare(){try{const f=new File([await slBlob()],slName(),{type:'i
 const PAPER={A4:[210,297],A3:[297,420]},MERC=L.CRS.EPSG3857,M0=2*Math.PI*6378137/256; // m/px at z0, equator
 let pmSrc=null,prShow=false,prMaps=[];const pgGrp=L.layerGroup().addTo(map);
 function prCfg(){const [w,h]=PAPER[$('pP').value],l=$('pO').value==='l',m=Math.max(0,+$('pM').value||0);
-  return {S:+$('pS').value,ov:Math.max(0,+$('pOv').value||0)*10,pw:(l?h:w)-2*m,ft:$('pLb').checked?8:0,ph:(l?w:h)-2*m-0.5-($('pLb').checked?8:0),m,paper:$('pP').value,land:l}} // mm; -0.5 avoids a spill page
+  const base=+$('pS').value,f=Math.min(1000,Math.max(10,+$('pF').value||100));
+  return {S:Math.round(base*100/f),base,f,ov:Math.max(0,+$('pOv').value||0)*10,pw:(l?h:w)-2*m,ft:$('pLb').checked?8:0,ph:(l?w:h)-2*m-0.5-($('pLb').checked?8:0),m,paper:$('pP').value,land:l}} // mm; -0.5 avoids a spill page
 // zoom where 1 CSS px (1/96 in on paper) = S*0.0254/96 m on the ground at latitude lat
 const zoomFor=(lat,S)=>Math.log2(M0*Math.cos(lat*Math.PI/180)*96/(S*0.0254));
 function prPages(){const c=prCfg(),ll=[];
@@ -809,15 +812,21 @@ function prPages(){const c=prCfg(),ll=[];
   const x0=Math.min(...xs)-pad,x1=Math.max(...xs)+pad,y0=Math.min(...ys)-pad,y1=Math.max(...ys)+pad;
   const nc=Math.max(1,Math.ceil((x1-x0-W)/sx)+1),nr=Math.max(1,Math.ceil((y1-y0-H)/sy)+1);
   const ox=(x0+x1)/2-(W+(nc-1)*sx)/2,oy=(y0+y1)/2+(H+(nr-1)*sy)/2,pages=[];
-  for(let r=0;r<nr;r++)for(let q=0;q<nc;q++){const cx=ox+W/2+q*sx,cy=oy-H/2-r*sy;
-    pages.push({r,c:q,center:MERC.unproject(L.point(cx,cy)),b:[MERC.unproject(L.point(cx-W/2,cy-H/2)),MERC.unproject(L.point(cx+W/2,cy+H/2))]})}
+  const off=S.prOff||{};
+  for(let r=0;r<nr;r++)for(let q=0;q<nc;q++){const o=off[r+'_'+q]||[0,0],gx=ox+W/2+q*sx,gy=oy-H/2-r*sy,cx=gx+o[0],cy=gy+o[1];
+    pages.push({r,c:q,g:[gx,gy],W,H,center:MERC.unproject(L.point(cx,cy)),b:[MERC.unproject(L.point(cx-W/2,cy-H/2)),MERC.unproject(L.point(cx+W/2,cy+H/2))]})}
   return {c,pages,nr,nc}}
 function prUpd(){if(!$('pS'))return;const {c,pages,nr,nc}=prPages();
-  $('pInfo').textContent=pages.length?`${pages.length} แผ่น (${nr} แถว × ${nc} คอลัมน์) · ${c.paper} ${c.land?'แนวนอน':'แนวตั้ง'} · 1:${c.S.toLocaleString()} · 1 แผ่น ≈ ${(c.pw*c.S/1e6).toFixed(1)}×${(c.ph*c.S/1e6).toFixed(1)} กม.`:'ยังไม่มีเส้นทาง';
-  S.pr={S:$('pS').value,P:$('pP').value,O:$('pO').value,ov:$('pOv').value,m:$('pM').value,lb:$('pLb').checked};save();
+  $('pInfo').textContent=pages.length?`${pages.length} แผ่น (${nr} แถว × ${nc} คอลัมน์) · ${c.paper} ${c.land?'แนวนอน':'แนวตั้ง'} · 1:${c.S.toLocaleString()}${c.f!==100?` (1:${c.base.toLocaleString()} × ${c.f}%)`:''} · 1 แผ่น ≈ ${(c.pw*c.S/1e6).toFixed(1)}×${(c.ph*c.S/1e6).toFixed(1)} กม.`:'ยังไม่มีเส้นทาง';
+  $('pFi').textContent=c.f!==100?'= 1:'+c.S.toLocaleString():'';
+  S.pr={S:$('pS').value,F:$('pF').value,P:$('pP').value,O:$('pO').value,ov:$('pOv').value,m:$('pM').value,lb:$('pLb').checked};save();
   pgGrp.clearLayers();if(!prShow)return;
-  pages.forEach((p,i)=>{L.rectangle(p.b,{color:'#d00',weight:2,fill:true,fillOpacity:.04,dashArray:'6 4',interactive:false}).addTo(pgGrp);
-    L.marker(p.center,{interactive:false,icon:L.divIcon({className:'',iconSize:null,html:`<span class="pgn">${i+1}</span>`})}).addTo(pgGrp)})}
+  pages.forEach((p,i)=>{const rc=L.rectangle(p.b,{color:'#d00',weight:2,fill:true,fillOpacity:.04,dashArray:'6 4',interactive:false}).addTo(pgGrp);
+    // drag the page number to move what this sheet prints
+    const bnd=ll=>{const q=MERC.project(ll);return [MERC.unproject(L.point(q.x-p.W/2,q.y-p.H/2)),MERC.unproject(L.point(q.x+p.W/2,q.y+p.H/2))]};
+    L.marker(p.center,{draggable:true,zIndexOffset:900,icon:L.divIcon({className:'',iconSize:null,html:`<span class="pgn" style="cursor:move" title="ลากเพื่อขยับแผ่นนี้">✥ ${i+1}</span>`})}).addTo(pgGrp)
+     .on('drag',e=>rc.setBounds(bnd(e.target.getLatLng())))
+     .on('dragend',e=>{const q=MERC.project(e.target.getLatLng());S.prOff=Object.assign(S.prOff||{},{[p.r+'_'+p.c]:[q.x-p.g[0],q.y-p.g[1]]});prUpd()})})}
 // ---- PAPER VIEW: map shown at the print zoom (true paper proportions), scaled on screen by pct ----
 let pvOn=false;const pvInv=map.invalidateSize.bind(map),mEl=$('map');
 const pvPct=()=>Math.min(400,Math.max(10,+S.ui.pvp||100));
@@ -829,7 +838,7 @@ function pvApply(){$('pvP').value=Math.round(pvPct());$('pvB').classList.toggle(
   const H=['scrollWheelZoom','doubleClickZoom','touchZoom','boxZoom'],c=map.getCenter(),zc=document.querySelector('.leaflet-control-zoom');
   if(zc)zc.style.display=pvOn?'none':'';H.forEach(n=>map[n]&&map[n][pvOn?'disable':'enable']());
   map.options.zoomSnap=pvOn?0:0.25;map.invalidateSize({pan:false});
-  if(pvOn)map.setView(c,zoomFor(c.lat,+$('pS').value),{animate:false});else map.setView(c,Math.round(map.getZoom()*4)/4,{animate:false})}
+  if(pvOn)map.setView(c,zoomFor(c.lat,prCfg().S),{animate:false});else map.setView(c,Math.round(map.getZoom()*4)/4,{animate:false})}
 function pvToggle(){pvOn=!pvOn;if(pvOn&&!prShow){prShow=true;prUpd()}pvApply()}
 function pvSet(v){if(!(v>0))return;S.ui.pvp=Math.min(400,Math.max(10,Math.round(v)));save();if(!pvOn)pvOn=true;pvApply()}
 function pvStep(d){const v=pvPct(),L_=[10,25,33,50,67,75,90,100,110,125,150,175,200,250,300,400];pvSet(d>0?(L_.find(x=>x>v)||400):([...L_].reverse().find(x=>x<v)||10))}
@@ -849,7 +858,7 @@ async function buildPages(){const {c,pages,nr,nc}=prPages();if(!pages.length){al
   const st=$('pgCss')||document.head.appendChild(Object.assign(document.createElement('style'),{id:'pgCss'}));
   st.textContent=`@page{size:${c.paper} ${c.land?'landscape':'portrait'};margin:${c.m}mm}`;
   prMaps.forEach(m=>m.remove());prMaps=[];const box=$('prt');box.innerHTML='';const src=tileSrc();let done=0;
-  const km=c.S/25000,nmL=Math.max(1,Math.round(c.S/50000)),barK=km*1e6/c.S,barN=nmL*1852000/c.S; // bar lengths in mm
+  const km=Math.max(1,Math.round(c.S/25000)),nmL=Math.max(1,Math.round(c.S/50000)),barK=km*1e6/c.S,barN=nmL*1852000/c.S; // bar lengths in mm
   const bar=(mm,t)=>`<div class="sb"><i style="width:${mm}mm;display:flex">${[0,1,2,3].map(k=>`<b style="flex:1;background:${k%2?'#fff':'#000'}"></b>`).join('')}</i>${t}</div>`;
   $('pInfo').textContent='กำลังโหลดแผนที่...';
   await Promise.all(pages.map((p,i)=>{const pg=document.createElement('div');pg.className='pg';pg.style.width=c.pw+'mm';box.appendChild(pg);
@@ -889,7 +898,7 @@ function pvClose(){const d=$('pvw');if(d){d.style.display='none';d.innerHTML=''}
 function pvPDF(){if(!PV)return;const {c,imgs}=PV;
   const pdf=new jspdf.jsPDF({unit:'mm',format:c.paper.toLowerCase(),orientation:c.land?'l':'p',compress:true});
   imgs.forEach((u,i)=>{if(i)pdf.addPage();pdf.addImage(u,'JPEG',c.m,c.m,c.pw,c.ph+c.ft,undefined,'FAST')});
-  pdf.save(`map_1-${c.S/1000}k_${c.paper}_${imgs.length}p.pdf`);$('pInfo').textContent=`บันทึก PDF ${imgs.length} แผ่นแล้ว`}
+  pdf.save(`map_1-${Math.round(c.S/1000)}k_${c.paper}_${imgs.length}p.pdf`);$('pInfo').textContent=`บันทึก PDF ${imgs.length} แผ่นแล้ว`}
 function pvPrint(){if(!PV)return;$('pInfo').textContent=`พิมพ์ ${PV.imgs.length} แผ่น`;document.body.classList.add('prtmode');setTimeout(()=>window.print(),300)}
 const printPages=()=>previewPages('print'),exportPDF=()=>previewPages('pdf');
 addEventListener('afterprint',()=>{document.body.classList.remove('prtmode');prUpd()});
@@ -897,7 +906,7 @@ addEventListener('afterprint',()=>{document.body.classList.remove('prtmode');prU
 const qm=new URLSearchParams(location.search).get('map')||(window.CONFIG&&CONFIG.MAP_URL);
 if(S.cfg&&/\.r2\.dev\//.test(S.cfg.url||''))S.cfg.url=S.cfg.url.replace(/^https:\/\/[^/]+\.r2\.dev\//,'https://spidersqdn.github.io/DataBase/FalCon2CP/'); // maps moved off R2 (2026-11)
 if(S.cfg){$('tileUrl').value=S.cfg.url||$('tileUrl').value;$('tms').checked=!!S.cfg.tms;$('kt').value=S.cfg.kt&&S.cfg.kt!='90'?S.cfg.kt:120;if(S.cfg.osm)$('tileUrl').value=OSM}
-if(S.pr){$('pS').value=S.pr.S;$('pP').value=S.pr.P;$('pO').value=S.pr.O;$('pOv').value=S.pr.ov;$('pM').value=S.pr.m;$('pLb').checked=S.pr.lb!==false}else if(/500k/i.test($('tileUrl').value))$('pS').value='500000';
+if(S.pr){$('pS').value=S.pr.S;$('pF').value=S.pr.F||100;$('pP').value=S.pr.P;$('pO').value=S.pr.O;$('pOv').value=S.pr.ov;$('pM').value=S.pr.m;$('pLb').checked=S.pr.lb!==false}else if(/500k/i.test($('tileUrl').value))$('pS').value='500000';
 $('offl').checked=S.ui.off;
 if(!S.pts.length&&!localStorage.getItem('routeS'))S.pts=[{type:'PZ',name:'ท่าอากาศยานร้อยเอ็ด',lat:16.1168,lon:103.7741,alt:'1100'},{type:'CP2',name:'สนาม ฮ. พล.ร.6',lat:16.105,lon:103.545,alt:'1100'},{type:'LZ',name:'สนาม ฮ. รร.สารคามพิทยาคม',lat:16.184,lon:103.3,alt:''}];
 if(new URLSearchParams(location.search).get('map')||!S.cfg||!/^(https?|local):/.test($('tileUrl').value))$('tileUrl').value=qm||$('tileUrl').value;
