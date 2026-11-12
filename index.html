@@ -214,7 +214,8 @@ body{height:100dvh}
   <label><input type="checkbox" id="pLb" checked onchange="prUpd()"> พิมพ์เลขแผ่น + scale bar ที่ขอบล่าง (นอกแผนที่)</label>
   <div class="sm" id="pInfo">-</div>
   <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center"><button id="pvB" style="flex:1 1 140px" onclick="pvToggle()" title="แสดงแผนที่เท่ากระดาษจริงที่มาตราส่วนนี้ ป้าย/กล่อง/ตัวอักษรจะมีขนาดเทียบกับแผนที่เหมือนตอนพิมพ์">📄 มุมมองกระดาษ</button>
-   <div style="display:flex;gap:4px;align-items:center"><button onclick="pvStep(-1)" style="width:auto">−</button><input id="pvP" type="number" min="10" max="400" step="5" value="100" onchange="pvSet(+this.value)" style="width:64px;text-align:center"><span>%</span><button onclick="pvStep(1)" style="width:auto">+</button><button onclick="pvSet(100)" style="width:auto">100%</button></div></div>
+   <button onclick="pvSet(100)" style="width:auto">100%</button></div>
+  <div id="pvBox" style="margin-top:4px"></div>
   <div class="sm">มุมมองกระดาษ: 100% = ขนาดเท่ากระดาษจริง (ตามมาตรฐานจอ 96 px/นิ้ว) · ล้อเมาส์/ปุ่ม −/+ = ย่อ/ขยาย % · จัดป้าย/กล่องได้ตามที่จะพิมพ์</div>
   <div class="sm">ลากเลขแผ่นสีแดง (✥) บนแผนที่เพื่อขยับส่วนที่จะพิมพ์</div>
   <div class="seg" style="margin:4px 0;display:grid;grid-template-columns:1fr 1fr 1fr"><button id="pmOne" onclick="pmSet(0)">เลื่อนแผ่นเดียว</button><button id="pmAll" onclick="pmSet(1)">เลื่อนทั้งหมด</button><button onclick="S.prOff={};prUpd()" title="คืนตำแหน่งแผ่นทั้งหมด">รีเซ็ต</button></div>
@@ -837,7 +838,7 @@ function pvLayout(){const st=mEl.style;['width','height','flex','marginRight','m
   const k=pvPct()/100,w=mEl.offsetWidth,h=mEl.offsetHeight;
   Object.assign(st,{flex:'none',width:w/k+'px',height:h/k+'px',marginRight:(w-w/k)+'px',marginBottom:(h-h/k)+'px',transform:`scale(${k})`,transformOrigin:'0 0'})}
 map.invalidateSize=function(o){pvLayout();return pvInv(o)};
-function pvApply(){$('pvP').value=Math.round(pvPct());$('pvB').classList.toggle('pri',pvOn);
+function pvApply(){const v=Math.round(pvPct());if($('pvR')){$('pvR').value=v;if(document.activeElement!==$('pvRn'))$('pvRn').value=v}$('pvB').classList.toggle('pri',pvOn);
   const H=['scrollWheelZoom','doubleClickZoom','touchZoom','boxZoom'],c=map.getCenter(),zc=document.querySelector('.leaflet-control-zoom');
   if(zc)zc.style.display=pvOn?'none':'';H.forEach(n=>map[n]&&map[n][pvOn?'disable':'enable']());
   map.options.zoomSnap=pvOn?0:0.25;map.invalidateSize({pan:false});
@@ -846,7 +847,7 @@ function pvToggle(){pvOn=!pvOn;if(pvOn&&!prShow){prShow=true;prUpd()}pvApply()}
 function pvSet(v){if(!(v>0))return;S.ui.pvp=Math.min(400,Math.max(10,Math.round(v)));save();if(!pvOn)pvOn=true;pvApply()}
 function pvStep(d){const v=pvPct(),L_=[10,25,33,50,67,75,90,100,110,125,150,175,200,250,300,400];pvSet(d>0?(L_.find(x=>x>v)||400):([...L_].reverse().find(x=>x<v)||10))}
 mEl.addEventListener('wheel',e=>{if(!pvOn)return;e.preventDefault();e.stopPropagation();pvSet(pvPct()*(e.deltaY<0?1.1:1/1.1))},{passive:false,capture:true});
-$('pvP').value=pvPct();
+$('pvBox').innerHTML=pctIn('pvR',pvPct(),'pvSet(+this.value)',{min:10,max:400,step:5,nmin:10,nmax:400});
 // base-map tile source for print: returns {get(z,x,y)->Promise<img src|null>, max}
 function tileSrc(){const u=$('tileUrl').value;
   if(/\.pmtiles$/i.test(u)&&pmSrc&&pmSrc.u===u)return {max:pmSrc.max,min:pmSrc.min||0,get:(z,x,y)=>pmSrc.p.getZxy(z,x,y).then(r=>r&&r.data?URL.createObjectURL(new Blob([r.data])):null)};
