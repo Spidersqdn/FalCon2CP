@@ -177,6 +177,9 @@ body{height:100dvh}
    <button class="pri" onclick="$('mapSel').value='';setBase()">โหลด URL นี้</button>
   </details>
  </fieldset>
+ <fieldset><legend>รูปแบบแผนที่เดินทาง</legend>
+  <div class="seg" style="margin:0"><button id="sA" onclick="setStyle('anf',1)">NAVIGATION</button><button id="sC" onclick="setStyle('cp',1)">แผนที่แผนสมบูรณ์</button></div>
+ </fieldset>
  <fieldset><legend>FLIGHT ROUTE Waypoint</legend>
   <div class="seg" id="rSeg"><button id="rMain" onclick="setRoute('main')">เส้นทางหลัก</button><button id="rSw" onclick="swapRoutes()" title="สลับเส้นทางหลัก ↔ สำรอง" style="flex:0 0 38px">⇄</button><button id="rAlt" onclick="setRoute('alt')">เส้นทางสำรอง</button><button id="rDel" onclick="delAlt()" title="ลบเส้นทางสำรอง" style="flex:0 0 38px">✕</button></div>
   <div class="sm" id="shHd" style="margin:-2px 0 4px"></div>
@@ -188,8 +191,6 @@ body{height:100dvh}
   <div class="sm">ชื่อจุด / Remark</div><input id="fName" style="width:100%" placeholder="เช่น สนาม ฮ. พล.ร.6">
   <div class="row" style="margin-top:8px"><button class="pri" onclick="addFromForm()">Add ROUTE</button></div>
   <div class="sm" id="modeHint"></div>
-  <div class="sm" style="margin-top:10px">รูปแบบเส้นทาง</div>
-  <div class="seg"><button id="sA" onclick="setStyle('anf',1)">NAVIGATION</button><button id="sC" onclick="setStyle('cp',1)">แผนที่แผนสมบูรณ์</button></div>
   <div class="row"><span class="sm" style="flex:none" id="lineLb">เส้นทาง</span><select id="lineSt" onchange="setLine(this.value)"><option value="solid">เส้นทึบ</option><option value="dash">เส้นประ</option></select></div>
   <div class="sm">ขนาดเส้นทางบิน</div><div id="lwBox"></div>
   <div class="sm">ขนาด Waypoint</div><div id="msBox"></div>
