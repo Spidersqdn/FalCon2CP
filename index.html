@@ -38,6 +38,9 @@ body.hide #side{display:none}
 .b3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}.b3 button{margin:0;padding:9px 4px;font-weight:bold}
 @media print{#tog{display:none}}
 #hdr{padding:14px 14px 10px;border-bottom:1px solid var(--ln)}#hdr b{font-size:18px}#hdr small{display:block;margin-top:4px;color:var(--cy);font:11px Consolas,monospace;letter-spacing:.5px}
+#srch{display:flex;gap:6px;margin-top:8px}#srch input{flex:1;min-width:0;font-family:inherit;padding:7px 9px}#srch button{margin:0;flex:none}
+#srR{margin-top:4px;max-height:220px;overflow:auto}#srR div{padding:6px 4px;border-bottom:1px dotted var(--ln);cursor:pointer;font-size:13px}#srR div:hover{background:#3a3d42}#srR b{color:var(--au);font-family:Consolas,monospace;margin-right:6px}#srR small{display:block;color:var(--mu);font-size:11px}
+.srp b{font-size:14px}.srp .m{font:12px Consolas,monospace;margin:4px 0}.srp button{width:100%;margin-top:6px}
 #prof{padding:10px 14px 12px;border-bottom:1px solid var(--ln)}#prof .ph{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}#prof .ph b{font-size:14px}#prof .ph span{font:11px Consolas,monospace;color:var(--mu)}
 #prG svg{display:block;width:100%;height:auto;background:#2b2e33;border:1px solid var(--ln);border-radius:8px}#prG .e{color:var(--mu);font-size:11px;padding:8px 0}
 #stats #kt{width:110px;font:bold 22px Consolas,monospace;padding:1px 6px;margin:0}
@@ -161,7 +164,9 @@ body{height:100dvh}
 @media print{#upd{display:none!important}}
 </style></head><body>
 <div id="side">
- <div id="hdr"><b><img src="icon.svg" alt="" style="width:22px;height:22px;vertical-align:-4px;margin-right:6px">FalCon2CP</b><small>ROUTE PLANNER · PZ / CP / LZ</small></div>
+ <div id="hdr"><b><img src="icon.svg" alt="" style="width:22px;height:22px;vertical-align:-4px;margin-right:6px">FalCon2CP</b><small>ROUTE PLANNER · PZ / CP / LZ</small>
+  <form id="srch" onsubmit="event.preventDefault();srGo()"><input id="srQ" type="search" placeholder="ICAO เช่น VTBL, VTBS หรือชื่อสถานที่" aria-label="ค้นหาสถานที่" autocomplete="off" oninput="srList()"><button type="submit">ค้นหา</button></form>
+  <div id="srR"></div></div>
  <div id="stats"><div>Distance<b id="stD">-</b></div><div>Flight Time<b id="stT">-</b></div><div>Waypoints<b id="stN">-</b></div><div>GS (KTS)<b><input id="kt" type="number" min="1" value="120" title="Ground speed"></b></div></div>
  <div id="prof"><div class="ph"><b>Elevation Profile</b><span id="prM"></span></div><div id="prG"></div></div>
  <fieldset><legend>MAP</legend>
@@ -686,6 +691,62 @@ function setLine(v){if((S.ui.route||'main')==='alt')S.ui.lineAlt=v;else S.ui.lin
 function setStyle(s,user){S.ui.style=s;if(user){S.ui.line='solid';delete S.ui.lineAlt}lineSel();$('sA').classList.toggle('on',s==='anf');$('sC').classList.toggle('on',s==='cp');syncShow();draw()}
 map.on('zoomend',()=>{if(S.ui.style==='anf'||S.ui.tick)draw()});
 map.on('click',e=>{if($('edp').style.display==='block'){closeEd();return}if(S.ui.mode==='map')addPt(e.latlng.lat,e.latlng.lng)});
+// ---- Place search (like AirNavFlow): data from DataBase CoWork (shared with AirNavFlow), offline copy in localStorage ----
+// AP.txt airports, สนามบิน ทบ.txt Army airfields/units/camps, AD.txt freqs (popup), places.json OSM names; else Nominatim online
+const CW=(window.CONFIG&&CONFIG.COWORK_URL)||'https://spidersqdn.github.io/DataBase/CoWork/';
+let PL=null,AD=null,srMk=null;
+function cwGet(f,json){const k='cw:'+f;
+  return fetch(CW+encodeURIComponent(f),{cache:'no-cache'}).then(r=>{if(!r.ok)throw 0;return r.text()}).then(t=>{try{localStorage.setItem(k,t)}catch(e){}return t})
+   .catch(()=>{try{return localStorage.getItem(k)}catch(e){return null}}).then(t=>{if(!t)return json?null:[];if(json){try{return JSON.parse(t)}catch(e){return null}}
+    return t.split(/\r?\n/).filter(l=>l.trim()&&!/^\s*#/.test(l)).map(l=>l.split('|').map(x=>x.trim()))})}
+// "13.6858" or DDMMSS.ss + N/S/E/W ("145228.7N", "1003948.2E")
+function cwDeg(v){v=String(v||'').trim().toUpperCase();const m=/^(\d+(?:\.\d+)?)([NSEW])$/.exec(v);
+  if(!m){const n=parseFloat(v);return isNaN(n)?null:n}
+  const t=m[1].split('.')[0],dl=t.length-4,d=+t.slice(0,dl),mi=+t.slice(dl,dl+2),se=parseFloat(m[1].slice(dl+2));
+  return (/[SW]/.test(m[2])?-1:1)*(d+mi/60+se/3600)}
+// MGRS -> [lat, lon] (WGS84), e.g. "47PPS7676053459"
+function mgrsLL(s){const m=/^(\d{1,2})([C-X])([A-Z])([A-Z])(\d*)$/.exec(String(s||'').toUpperCase().replace(/\s+/g,''));if(!m||m[5].length%2)return null;
+  const z=+m[1],band=m[2],h=m[5].length/2,sc=10**(5-h),set=(z-1)%3,
+   col=['ABCDEFGH','JKLMNPQR','STUVWXYZ'][set].indexOf(m[3])+1,row0='ABCDEFGHJKLMNPQRSTUV'.indexOf(m[4]);if(col<1||row0<0)return null;
+  const E=col*1e5+(+m[5].slice(0,h)||0)*sc;let N=((row0-(z%2?0:5))%20+20)%20*1e5+(+m[5].slice(h)||0)*sc;
+  const bl=-80+'CDEFGHJKLMNPQRSTUVWX'.indexOf(band)*8,nMin=Math.max(0,bl)*110946.0;while(N<nMin-5e5)N+=2e6;if(N<nMin-1e5)N+=2e6;
+  const a=6378137,f=1/298.257223563,e2=f*(2-f),ep=e2/(1-e2),k0=0.9996,e1=(1-Math.sqrt(1-e2))/(1+Math.sqrt(1-e2)),
+   Ms=(bl<0?N-1e7:N)/k0,mu=Ms/(a*(1-e2/4-3*e2*e2/64-5*e2**3/256)),
+   p1=mu+(3*e1/2-27*e1**3/32)*Math.sin(2*mu)+(21*e1*e1/16-55*e1**4/32)*Math.sin(4*mu)+(151*e1**3/96)*Math.sin(6*mu),
+   N1=a/Math.sqrt(1-e2*Math.sin(p1)**2),T1=Math.tan(p1)**2,C1=ep*Math.cos(p1)**2,R1=a*(1-e2)/(1-e2*Math.sin(p1)**2)**1.5,D=(E-5e5)/(N1*k0);
+  const lat=p1-(N1*Math.tan(p1)/R1)*(D*D/2-(5+3*T1+10*C1-4*C1*C1-9*ep)*D**4/24+(61+90*T1+298*C1+45*T1*T1-252*ep-3*C1*C1)*D**6/720),
+   lon=(D-(1+2*T1+C1)*D**3/6+(5-2*C1+28*T1-3*C1*C1+8*ep+24*T1*T1)*D**5/120)/Math.cos(p1);
+  return [lat*180/Math.PI,(z-1)*6-180+3+lon*180/Math.PI]}
+function plLoad(){if(PL)return Promise.resolve(PL);
+  return Promise.all([cwGet('AP.txt'),cwGet('สนามบิน ทบ.txt'),cwGet('AD.txt'),cwGet('places.json',1)]).then(([ap,ar,ad,pj])=>{
+   AD={};ad.forEach(r=>{if(r[0]&&r[1]&&r[1]!=='MORSE')(AD[r[0].toUpperCase()]=AD[r[0].toUpperCase()]||[]).push(r[1]+' '+(r[2]||''))});
+   PL=[];ap.forEach(r=>{const la=cwDeg(r[4]),lo=cwDeg(r[5]);if(la!=null&&lo!=null)PL.push({id:(r[0]||'').toUpperCase(),n:r[2]||'',sub:(r[3]||'')+(r[1]?' · '+r[1]:''),lat:la,lon:lo,el:r[6],k:'AD'})});
+   ar.forEach(r=>{const dd=/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/.exec(r[2]||''),ll=dd?[+dd[1],+dd[2]]:mgrsLL(r[2]);
+    if(ll)PL.push({id:'',n:r[1]||'',sub:r[3]||'',lat:ll[0],lon:ll[1],k:/ค่าย/.test(r[0])?'CAMP':/หน่วย/.test(r[0])?'UNIT':'ARMY'})});
+   if(pj&&pj.p)pj.p.forEach(a=>PL.push({id:'',n:a[0]||a[1],sub:(a[0]&&a[1]?a[1]+' · ':'')+((pj.kinds||[])[a[4]]||''),lat:a[2],lon:a[3],k:'OSM'}));
+   return PL})}
+const plNorm=t=>String(t||'').toUpperCase().replace(/\s+/g,'');
+function plFind(q){const u=plNorm(q);if(!u||!PL)return [];const ex=PL.filter(p=>p.id===u);if(ex.length)return ex;
+  const r=[];for(const p of PL){if(plNorm(p.id+p.n+p.sub).includes(u)){r.push(p);if(r.length>=12)break}}return r}
+const PL_K={AD:'สนามบิน',ARMY:'สนามบิน ทบ.',UNIT:'หน่วยบิน',CAMP:'ค่ายทหาร',OSM:'สถานที่'};
+function srList(){const q=$('srQ').value.trim(),box=$('srR');if(q.length<2){box.innerHTML='';return}
+  plLoad().then(()=>{if($('srQ').value.trim()!==q)return;const r=plFind(q);window.srHits=r;
+   box.innerHTML=r.map((p,i)=>`<div onclick="srShow(srHits[${i}])"><b>${esc(p.id||PL_K[p.k]||'')}</b>${esc(p.n)}<small>${esc(p.sub||'')}</small></div>`).join('')})}
+function srGo(){const q=$('srQ').value.trim();if(!q)return;
+  plLoad().then(()=>{const r=plFind(q);if(r.length){srShow(r[0]);return}
+   fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=th&q='+encodeURIComponent(q)).then(r=>r.json()).then(j=>{
+    if(!j.length)return alert('ไม่พบสถานที่');const f=String(j[0].display_name||q);
+    srShow({id:'',n:f.split(',')[0].trim()||q,sub:f,lat:+j[0].lat,lon:+j[0].lon,k:'OSM'})}).catch(()=>alert('ค้นหาสถานที่ไม่สำเร็จ (ต้องต่อเน็ต)'))})}
+function srShow(p){if(!p)return;$('srR').innerHTML='';
+  const nm=(p.id?p.id+' ':'')+p.n,ad=p.id&&AD&&AD[p.id]||[];window.srCur={p,nm};
+  const h=`<div class="srp"><b>${esc(nm)}</b><div style="color:#555;font-size:12px">${esc(PL_K[p.k]||'')}${p.sub?' · '+esc(p.sub):''}</div>
+   <div class="m">${ddm(p.lat)}&nbsp; ${ddm(p.lon)}<br>MGRS ${mgrs(p.lat,p.lon)}${p.el!=null&&p.el!==''?'<br>ELEV '+esc(p.el)+' ft':''}</div>
+   ${ad.length?`<div class="m" style="max-height:110px;overflow:auto;color:#333">${ad.slice(0,12).map(esc).join('<br>')}</div>`:''}
+   <button class="pri" onclick="srAdd()">Add ROUTE</button></div>`;
+  if(srMk)map.removeLayer(srMk);
+  srMk=L.circleMarker([p.lat,p.lon],{radius:8,color:'#F2B43C',weight:3,fill:false}).addTo(map).bindPopup(h,{maxWidth:280}).on('popupclose',function(){map.removeLayer(this);if(srMk===this)srMk=null});
+  map.flyTo([p.lat,p.lon],Math.max(map.getZoom(),11));map.once('moveend',()=>srMk&&srMk.openPopup())}
+function srAdd(){const c=window.srCur;if(!c)return;$('fName').value=c.nm;addPt(c.p.lat,c.p.lon);map.closePopup();if(srMk){map.removeLayer(srMk);srMk=null}}
 $('kt').oninput=draw;
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'&&!/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)){e.preventDefault();undo()}});
 // ---- offline cache (service worker) ----

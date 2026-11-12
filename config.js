@@ -6,5 +6,7 @@ window.CONFIG = {
     { name: "JOG 1:250,000", url: "https://spidersqdn.github.io/DataBase/FalCon2CP/map250k.pmtiles" },
     { name: "TPC 1:500,000", url: "https://spidersqdn.github.io/DataBase/FalCon2CP/map500k.pmtiles" }
   ],
+  // ข้อมูลช่องค้นหาสถานที่: โฟลเดอร์ CoWork ของ repo DataBase (AP.txt, สนามบิน ทบ.txt, AD.txt, places.json)
+  COWORK_URL: "https://spidersqdn.github.io/DataBase/CoWork/",
   DEFAULT_KT: 90
 };
