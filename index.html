@@ -321,11 +321,11 @@ function nmInt(a){const T=Math.round(a.reduce((s,x)=>s+x,0)),f=a.map(x=>Math.flo
 function drawTicks(g,anf){const D=+S.ui.tick||0;if(!D||S.pts.length<2)return;const M=g._map||map,z=M.getZoom();
   const pass=(P,col)=>{let acc=0;P.slice(1).forEach((b,i)=>{const a=P[i];if(i===0||a.fly!=='by')acc=0;const nm=legCalc(a,b).nm;if(!(nm>0))return;
     const pa=M.project([LA(a),LO(a)],z),pb=M.project([LA(b),LO(b)],z),d=pb.subtract(pa),len=d.distanceTo([0,0])||1,u=d.divideBy(len),nx=-u.y,ny=u.x;
-    const ra=anf?RING*(a.msc||S.ui.msc||1):0,rb=anf?RING*(b.msc||S.ui.msc||1):0,w=a.lw||b.lw||S.ui.lw||3*(S.ui.lwc||1),h=6+w,tl=h*1.6*(S.ui.tlsc||1);let ang=Math.atan2(d.y,d.x)*180/Math.PI;if(ang>90)ang-=180;if(ang<-90)ang+=180; // numbers parallel to the leg, kept upright
+    const ra=anf?RING*(a.msc||S.ui.msc||1):0,rb=anf?RING*(b.msc||S.ui.msc||1):0,w=a.lw||b.lw||S.ui.lw||3*(S.ui.lwc||1),h=6+w,tl=h*1.6*(S.ui.tlsc||1);let ang=Math.atan2(d.y,d.x)*180/Math.PI+90;if(ang>90)ang-=180;if(ang<-90)ang+=180; // numbers perpendicular to the leg (along the tick), kept upright
     
     for(let t=D-(acc%D);t<nm-1e-6;t+=D){const p=pa.add(d.multiplyBy(t/nm)),dp=t/nm*len;if(dp<ra||len-dp<rb)continue;
       L.polyline([M.unproject(p,z),M.unproject(p.add(L.point(nx*tl,ny*tl)),z)],{color:col,weight:Math.max(2,w*0.7),interactive:false}).addTo(g);
-      if(S.ui.tickN===false)continue;const ts=S.ui.tnsc||1,q=p.add(L.point(nx*(tl+9*ts),ny*(tl+9*ts))),tw=S.ui.tnw||2;
+      if(S.ui.tickN===false)continue;const ts=S.ui.tnsc||1,lb=String(Math.round(acc+t)),od=tl+(4+lb.length*3.8)*ts,q=p.add(L.point(nx*od,ny*od)),tw=S.ui.tnw||2;
       L.marker(M.unproject(q,z),{interactive:false,keyboard:false,icon:L.divIcon({className:'',iconSize:null,iconAnchor:[0,0],html:`<span class="tick" style="transform:translate(-50%,-50%) rotate(${ang.toFixed(1)}deg);color:${col};font-size:${12*ts}px;line-height:${13*ts}px;font-weight:${tw>1?700:400};-webkit-text-stroke:${tw>2?((tw-2)*0.2*ts).toFixed(2):0}px ${col}">${Math.round(acc+t)}</span>`})}).addTo(g)}
     acc+=nm})};
   if(S.ui.tickGo!==false)pass(S.pts,'#000');if(S.ui.tickBack)pass(S.pts.slice().reverse(),'#1546c8')}
