@@ -216,10 +216,9 @@ body{height:100dvh}
   <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center"><button id="pvB" style="flex:1 1 140px" onclick="pvToggle()" title="แสดงแผนที่เท่ากระดาษจริงที่มาตราส่วนนี้ ป้าย/กล่อง/ตัวอักษรจะมีขนาดเทียบกับแผนที่เหมือนตอนพิมพ์">📄 มุมมองกระดาษ</button>
    <div style="display:flex;gap:4px;align-items:center"><button onclick="pvStep(-1)" style="width:auto">−</button><input id="pvP" type="number" min="10" max="400" step="5" value="100" onchange="pvSet(+this.value)" style="width:64px;text-align:center"><span>%</span><button onclick="pvStep(1)" style="width:auto">+</button><button onclick="pvSet(100)" style="width:auto">100%</button></div></div>
   <div class="sm">มุมมองกระดาษ: 100% = ขนาดเท่ากระดาษจริง (ตามมาตรฐานจอ 96 px/นิ้ว) · ล้อเมาส์/ปุ่ม −/+ = ย่อ/ขยาย % · จัดป้าย/กล่องได้ตามที่จะพิมพ์</div>
-  <button onclick="prShow=!prShow;prUpd();if(prShow&&pgGrp.getLayers().length)map.fitBounds(L.featureGroup(pgGrp.getLayers()).getBounds())">แสดง/ซ่อนกรอบแผ่นบนแผนที่</button>
   <div class="sm">ลากเลขแผ่นสีแดง (✥) บนแผนที่เพื่อขยับส่วนที่จะพิมพ์</div>
   <div class="seg" style="margin:4px 0;display:grid;grid-template-columns:1fr 1fr 1fr"><button id="pmOne" onclick="pmSet(0)">เลื่อนแผ่นเดียว</button><button id="pmAll" onclick="pmSet(1)">เลื่อนทั้งหมด</button><button onclick="S.prOff={};prUpd()" title="คืนตำแหน่งแผ่นทั้งหมด">รีเซ็ต</button></div>
-  <div class="row"><button class="pri" onclick="exportPDF()">Export PDF</button><button onclick="printPages()">Print</button></div>
+  <div class="b3"><button class="pri" onclick="exportPDF()">Export PDF</button><button onclick="prShow=!prShow;prUpd();if(prShow&&pgGrp.getLayers().length)map.fitBounds(L.featureGroup(pgGrp.getLayers().filter(l=>l.getBounds)).getBounds())" title="แสดง/ซ่อนกรอบแผ่นบนแผนที่">แสดง/ซ่อนกรอบ</button><button onclick="printPages()">Print</button></div>
   <div class="sm">Export PDF = ไฟล์ขนาดจริง ใช้ได้ทุกเครื่อง (iPad แนะนำ) · ตอนพิมพ์ PDF ตั้ง Scale 100% / Actual size (ห้าม Fit to page) · เส้นประแดง = แนวขอบแผ่นข้างเคียง ใช้ต่อแผ่น</div>
  </fieldset>
  
