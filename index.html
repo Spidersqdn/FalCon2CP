@@ -194,6 +194,8 @@ body{height:100dvh}
   <div class="sm" id="modeHint"></div>
   <div class="row"><span class="sm" style="flex:none" id="lineLb">เส้นทาง</span><select id="lineSt" onchange="setLine(this.value)"><option value="solid">เส้นทึบ</option><option value="dash">เส้นประ</option></select><span class="sm" style="flex:none">Tic mark</span><select id="tickSt" onchange="S.ui.tick=+this.value;draw()" title="ขีดบอกระยะบนเส้นทาง นับใหม่ทุกจุด FLY OVER"><option value="0">ไม่มี</option><option value="5">ทุก 5 NM</option><option value="10">ทุก 10 NM</option></select></div>
   <div class="sm" style="display:flex;justify-content:space-between;align-items:center">ขนาดตัวเลข Tic mark<label style="color:inherit"><input type="checkbox" id="tickN" style="width:auto" onchange="S.ui.tickN=this.checked;draw()"> แสดงตัวเลข</label></div><div id="tnBox"></div>
+  <div class="sm">ความหนาตัวเลข Tic mark (1 = บาง, 2 = ปกติ)</div><div id="twBox"></div>
+  <div class="sm">ความยาว Tic mark</div><div id="tlBox"></div>
   <div class="sm">ขนาดเส้นทางบิน</div><div id="lwBox"></div>
   <div class="sm">ขนาด Waypoint</div><div id="msBox"></div>
   <div class="sm">ขนาด DOG LEGs</div><div id="bsBox"></div>
@@ -320,9 +322,10 @@ function drawTicks(g,anf){const D=+S.ui.tick||0;if(!D||S.pts.length<2)return;con
     const ra=anf?RING*(a.msc||S.ui.msc||1):0,rb=anf?RING*(b.msc||S.ui.msc||1):0,w=a.lw||S.ui.lw||3*(S.ui.lwc||1),h=6+w;
     for(let t=D-(acc%D);t<nm-1e-6;t+=D){const p=pa.add(d.multiplyBy(t/nm)),dp=t/nm*len;if(dp<ra||len-dp<rb)continue;
       // tick on the RIGHT of the direction of flight (screen y points down), with the distance since the last reset
-      L.polyline([M.unproject(p,z),M.unproject(p.add(L.point(nx*h*1.6,ny*h*1.6)),z)],{color:'#000',weight:Math.max(2,w*0.7),interactive:false}).addTo(g);
-      if(S.ui.tickN===false)continue;const ts=S.ui.tnsc||1,q=p.add(L.point(nx*(h*1.6+9*ts),ny*(h*1.6+9*ts)));
-      L.marker(M.unproject(q,z),{interactive:false,keyboard:false,icon:L.divIcon({className:'',iconSize:null,iconAnchor:[0,0],html:`<span class="tick" style="font-size:${12*ts}px;line-height:${13*ts}px">${Math.round(acc+t)}</span>`})}).addTo(g)}
+      const tl=h*1.6*(S.ui.tlsc||1);
+      L.polyline([M.unproject(p,z),M.unproject(p.add(L.point(nx*tl,ny*tl)),z)],{color:'#000',weight:Math.max(2,w*0.7),interactive:false}).addTo(g);
+      if(S.ui.tickN===false)continue;const ts=S.ui.tnsc||1,q=p.add(L.point(nx*(tl+9*ts),ny*(tl+9*ts))),tw=S.ui.tnw||2;
+      L.marker(M.unproject(q,z),{interactive:false,keyboard:false,icon:L.divIcon({className:'',iconSize:null,iconAnchor:[0,0],html:`<span class="tick" style="font-size:${12*ts}px;line-height:${13*ts}px;font-weight:${tw>1?700:400};-webkit-text-stroke:${tw>2?((tw-2)*0.2*ts).toFixed(2):0}px #000">${Math.round(acc+t)}</span>`})}).addTo(g)}
     acc+=nm})}
 function legs(){eff();const kt=+$('kt').value||120;
   const L_=S.pts.slice(1).map((b,i)=>{const a=S.pts[i],c=legCalc(a,b),o=a.ov||{};
@@ -350,7 +353,9 @@ function pctIn(id,v,fn,o){o=Object.assign({min:20,max:400,step:1,unit:'%',nmin:1
 const allPts=()=>S.pts.concat(S.alt||[]);
 function setGlob(k,v){S.ui[k]=v;allPts().forEach(q=>delete q[k]);draw()}
 function setLw(v){S.ui.lwc=v;delete S.ui.lw;allPts().forEach(q=>delete q.lw);draw()}
-function globSizes(){$('tnBox').innerHTML=pctIn('tnG',(S.ui.tnsc||1)*100,"S.ui.tnsc=this.value/100;draw()");$('tickN').checked=S.ui.tickN!==false;$('lwBox').innerHTML=pctIn('lwG',(S.ui.lwc||1)*100,"setLw(this.value/100)");$('msBox').innerHTML=pctIn('msG',(S.ui.msc||1)*100,"setGlob('msc',this.value/100)");
+function globSizes(){$('tnBox').innerHTML=pctIn('tnG',(S.ui.tnsc||1)*100,"S.ui.tnsc=this.value/100;draw()");$('tickN').checked=S.ui.tickN!==false;
+  $('twBox').innerHTML=pctIn('twG',S.ui.tnw||2,"S.ui.tnw=+this.value;draw()",{min:1,max:10,step:1,unit:'',nmin:1,nmax:10});
+  $('tlBox').innerHTML=pctIn('tlG',(S.ui.tlsc||1)*100,"S.ui.tlsc=this.value/100;draw()",{min:20,max:400});$('lwBox').innerHTML=pctIn('lwG',(S.ui.lwc||1)*100,"setLw(this.value/100)");$('msBox').innerHTML=pctIn('msG',(S.ui.msc||1)*100,"setGlob('msc',this.value/100)");
   $('bsBox').innerHTML=pctIn('bsG',(S.ui.bsc||1)*100,"setGlob('bsc',this.value/100)");
   $('lsBox').innerHTML=pctIn('lsG',(S.ui.lsc||1)*100,"setGlob('lsc',this.value/100)");
   $('txBox').innerHTML=pctIn('txG',S.ui.tbx||0,"setGlob('tbx',+this.value)",{min:-200,max:200,step:5,unit:'px',nmin:-400,nmax:400})}
