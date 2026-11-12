@@ -38,6 +38,9 @@ body.hide #side{display:none}
 .b3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}.b3 button{margin:0;padding:9px 4px;font-weight:bold}
 @media print{#tog{display:none}}
 #hdr{padding:14px 14px 10px;border-bottom:1px solid var(--ln)}#hdr b{font-size:18px}#hdr small{display:block;margin-top:4px;color:var(--cy);font:11px Consolas,monospace;letter-spacing:.5px}
+#srch{display:flex;gap:6px;margin-top:8px}#srch input{flex:1;min-width:0;font-family:inherit;padding:7px 9px}#srch button{margin:0;flex:none}
+#srR{margin-top:4px;max-height:220px;overflow:auto}#srR div{padding:6px 4px;border-bottom:1px dotted var(--ln);cursor:pointer;font-size:13px}#srR div:hover{background:#3a3d42}#srR b{color:var(--au);font-family:Consolas,monospace;margin-right:6px}#srR small{display:block;color:var(--mu);font-size:11px}
+.srp b{font-size:14px}.srp .m{font:12px Consolas,monospace;margin:4px 0}.srp button{width:100%;margin-top:6px}
 #prof{padding:10px 14px 12px;border-bottom:1px solid var(--ln)}#prof .ph{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}#prof .ph b{font-size:14px}#prof .ph span{font:11px Consolas,monospace;color:var(--mu)}
 #prG svg{display:block;width:100%;height:auto;background:#2b2e33;border:1px solid var(--ln);border-radius:8px}#prG .e{color:var(--mu);font-size:11px;padding:8px 0}
 #stats #kt{width:110px;font:bold 22px Consolas,monospace;padding:1px 6px;margin:0}
@@ -161,7 +164,9 @@ body{height:100dvh}
 @media print{#upd{display:none!important}}
 </style></head><body>
 <div id="side">
- <div id="hdr"><b><img src="icon.svg" alt="" style="width:22px;height:22px;vertical-align:-4px;margin-right:6px">FalCon2CP</b><small>ROUTE PLANNER · PZ / CP / LZ</small></div>
+ <div id="hdr"><b><img src="icon.svg" alt="" style="width:22px;height:22px;vertical-align:-4px;margin-right:6px">FalCon2CP</b><small>ROUTE PLANNER · PZ / CP / LZ</small>
+  <form id="srch" onsubmit="event.preventDefault();srGo()"><input id="srQ" type="search" placeholder="ICAO เช่น VTBL, VTBS หรือชื่อสถานที่" aria-label="ค้นหาสถานที่" autocomplete="off" oninput="srList()"><button type="submit">ค้นหา</button></form>
+  <div id="srR"></div></div>
  <div id="stats"><div>Distance<b id="stD">-</b></div><div>Flight Time<b id="stT">-</b></div><div>Waypoints<b id="stN">-</b></div><div>GS (KTS)<b><input id="kt" type="number" min="1" value="120" title="Ground speed"></b></div></div>
  <div id="prof"><div class="ph"><b>Elevation Profile</b><span id="prM"></span></div><div id="prG"></div></div>
  <fieldset><legend>MAP</legend>
@@ -686,6 +691,33 @@ function setLine(v){if((S.ui.route||'main')==='alt')S.ui.lineAlt=v;else S.ui.lin
 function setStyle(s,user){S.ui.style=s;if(user){S.ui.line='solid';delete S.ui.lineAlt}lineSel();$('sA').classList.toggle('on',s==='anf');$('sC').classList.toggle('on',s==='cp');syncShow();draw()}
 map.on('zoomend',()=>{if(S.ui.style==='anf'||S.ui.tick)draw()});
 map.on('click',e=>{if($('edp').style.display==='block'){closeEd();return}if(S.ui.mode==='map')addPt(e.latlng.lat,e.latlng.lng)});
+// ---- Place search (like AirNavFlow): airports + Army airfields/units/camps from DataBase places.json, then OSM Nominatim ----
+const PL_URL=(window.CONFIG&&CONFIG.PLACES_URL)||'https://spidersqdn.github.io/DataBase/FalCon2CP/places.json';
+let PL=null,srMk=null;
+function plLoad(){if(PL)return Promise.resolve(PL);
+  return fetch(PL_URL,{cache:'no-cache'}).then(r=>{if(!r.ok)throw 0;return r.json()}).then(j=>{try{localStorage.setItem('places',JSON.stringify(j))}catch(e){}return j})
+   .catch(()=>{try{return JSON.parse(localStorage.getItem('places'))}catch(e){return null}})
+   .then(j=>PL=(j&&j.p||[]).map(a=>({id:a[0],n:a[1],sub:a[2],lat:a[3],lon:a[4],el:a[5],k:a[6]})))}
+const plNorm=t=>String(t||'').toUpperCase().replace(/\s+/g,'');
+function plFind(q){const u=plNorm(q);if(!u||!PL)return [];const ex=PL.filter(p=>p.id===u);if(ex.length)return ex;
+  return PL.filter(p=>plNorm(p.id+p.n+p.sub).includes(u)).slice(0,10)}
+const PL_K={AD:'สนามบิน',ARMY:'สนามบิน ทบ.',UNIT:'หน่วยบิน',CAMP:'ค่ายทหาร'};
+function srList(){const q=$('srQ').value.trim(),box=$('srR');if(q.length<2){box.innerHTML='';return}
+  plLoad().then(()=>{const r=plFind(q);box.innerHTML=r.map((p,i)=>`<div onclick="srShow(srHits[${i}])"><b>${esc(p.id||PL_K[p.k]||'')}</b>${esc(p.n)}<small>${esc(p.sub||'')}</small></div>`).join('');window.srHits=r})}
+function srGo(){const q=$('srQ').value.trim();if(!q)return;
+  plLoad().then(()=>{const r=plFind(q);if(r.length){srShow(r[0]);return}
+   fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=th&q='+encodeURIComponent(q)).then(r=>r.json()).then(j=>{
+    if(!j.length)return alert('ไม่พบสถานที่');const f=String(j[0].display_name||q);
+    srShow({id:'',n:f.split(',')[0].trim()||q,sub:f,lat:+j[0].lat,lon:+j[0].lon,k:'OSM'})}).catch(()=>alert('ค้นหาสถานที่ไม่สำเร็จ (ต้องต่อเน็ต)'))})}
+function srShow(p){if(!p)return;$('srR').innerHTML='';
+  const nm=(p.id?p.id+' ':'')+p.n;window.srCur={p,nm};
+  const h=`<div class="srp"><b>${esc(nm)}</b><div style="color:#555;font-size:12px">${esc(PL_K[p.k]||'OSM')}${p.sub?' · '+esc(p.sub):''}</div>
+   <div class="m">${ddm(p.lat)}&nbsp; ${ddm(p.lon)}<br>MGRS ${mgrs(p.lat,p.lon)}${p.el!=null&&p.el!==''?'<br>ELEV '+esc(p.el)+' ft':''}</div>
+   <button class="pri" onclick="srAdd()">Add ROUTE</button></div>`;
+  if(srMk)map.removeLayer(srMk);
+  srMk=L.circleMarker([p.lat,p.lon],{radius:8,color:'#F2B43C',weight:3,fill:false}).addTo(map).bindPopup(h).on('popupclose',function(){map.removeLayer(this);if(srMk===this)srMk=null});
+  map.flyTo([p.lat,p.lon],Math.max(map.getZoom(),11));map.once('moveend',()=>srMk&&srMk.openPopup())}
+function srAdd(){const c=window.srCur;if(!c)return;$('fName').value=c.nm;addPt(c.p.lat,c.p.lon);map.closePopup();if(srMk){map.removeLayer(srMk);srMk=null}}
 $('kt').oninput=draw;
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'&&!/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)){e.preventDefault();undo()}});
 // ---- offline cache (service worker) ----
