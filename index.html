@@ -193,6 +193,7 @@ body{height:100dvh}
   <div class="row" style="margin-top:8px"><button class="pri" onclick="addFromForm()">Add ROUTE</button></div>
   <div class="sm" id="modeHint"></div>
   <div class="row"><span class="sm" style="flex:none" id="lineLb">เส้นทาง</span><select id="lineSt" onchange="setLine(this.value)"><option value="solid">เส้นทึบ</option><option value="dash">เส้นประ</option></select><span class="sm" style="flex:none">Tic mark</span><select id="tickSt" onchange="S.ui.tick=+this.value;draw()" title="ขีดบอกระยะบนเส้นทาง นับใหม่ทุกจุด FLY OVER"><option value="0">ไม่มี</option><option value="5">ทุก 5 NM</option><option value="10">ทุก 10 NM</option></select></div>
+  <div class="row" style="margin:-2px 0 4px;gap:8px 14px;flex-wrap:wrap"><span class="sm" style="flex:none">Tic mark แสดง</span><label style="flex:none"><input type="checkbox" id="tkGo" style="width:auto" onchange="S.ui.tickGo=this.checked;draw()"> ขาไป (ดำ)</label><label style="flex:none;color:#7aa2ff"><input type="checkbox" id="tkBk" style="width:auto" onchange="S.ui.tickBack=this.checked;draw()"> ขากลับ (น้ำเงิน)</label></div>
   <div class="sm" style="display:flex;justify-content:space-between;align-items:center">ขนาดตัวเลข Tic mark<label style="color:inherit"><input type="checkbox" id="tickN" style="width:auto" onchange="S.ui.tickN=this.checked;draw()"> แสดงตัวเลข</label></div><div id="tnBox"></div>
   <div class="sm">ความหนาตัวเลข Tic mark (1 = บาง, 2 = ปกติ)</div><div id="twBox"></div>
   <div class="sm">ความยาว Tic mark</div><div id="tlBox"></div>
@@ -316,17 +317,18 @@ function parseT(t){if(!has(t))return null;const m=/^(\d+):(\d{1,2})$/.exec(Strin
 function nmInt(a){const T=Math.round(a.reduce((s,x)=>s+x,0)),f=a.map(x=>Math.floor(x));let k=T-f.reduce((s,x)=>s+x,0);
   a.map((x,i)=>[x-f[i],i]).sort((p,q)=>q[0]-p[0]).forEach(([,i])=>{if(k>0){f[i]++;k--}});return f}
 // tic marks every S.ui.tick NM along the route; the count restarts at the start and at every FLY OVER point (FLY BY continues)
-function drawTicks(g,anf){const D=+S.ui.tick||0;if(!D||S.pts.length<2)return;const M=g._map||map,z=M.getZoom();let acc=0;
-  S.pts.slice(1).forEach((b,i)=>{const a=S.pts[i];if(i===0||a.fly!=='by')acc=0;const nm=legCalc(a,b).nm;if(!(nm>0))return;
+// outbound (ขาไป): black, on the right of PZ->LZ flight; return (ขากลับ): blue, on the right of LZ->PZ flight, counted from the LZ end
+function drawTicks(g,anf){const D=+S.ui.tick||0;if(!D||S.pts.length<2)return;const M=g._map||map,z=M.getZoom();
+  const pass=(P,col)=>{let acc=0;P.slice(1).forEach((b,i)=>{const a=P[i];if(i===0||a.fly!=='by')acc=0;const nm=legCalc(a,b).nm;if(!(nm>0))return;
     const pa=M.project([LA(a),LO(a)],z),pb=M.project([LA(b),LO(b)],z),d=pb.subtract(pa),len=d.distanceTo([0,0])||1,u=d.divideBy(len),nx=-u.y,ny=u.x;
-    const ra=anf?RING*(a.msc||S.ui.msc||1):0,rb=anf?RING*(b.msc||S.ui.msc||1):0,w=a.lw||S.ui.lw||3*(S.ui.lwc||1),h=6+w;
+    const ra=anf?RING*(a.msc||S.ui.msc||1):0,rb=anf?RING*(b.msc||S.ui.msc||1):0,w=a.lw||b.lw||S.ui.lw||3*(S.ui.lwc||1),h=6+w,tl=h*1.6*(S.ui.tlsc||1);let ang=Math.atan2(d.y,d.x)*180/Math.PI;if(ang>90)ang-=180;if(ang<-90)ang+=180; // numbers parallel to the leg, kept upright
+    
     for(let t=D-(acc%D);t<nm-1e-6;t+=D){const p=pa.add(d.multiplyBy(t/nm)),dp=t/nm*len;if(dp<ra||len-dp<rb)continue;
-      // tick on the RIGHT of the direction of flight (screen y points down), with the distance since the last reset
-      const tl=h*1.6*(S.ui.tlsc||1);
-      L.polyline([M.unproject(p,z),M.unproject(p.add(L.point(nx*tl,ny*tl)),z)],{color:'#000',weight:Math.max(2,w*0.7),interactive:false}).addTo(g);
+      L.polyline([M.unproject(p,z),M.unproject(p.add(L.point(nx*tl,ny*tl)),z)],{color:col,weight:Math.max(2,w*0.7),interactive:false}).addTo(g);
       if(S.ui.tickN===false)continue;const ts=S.ui.tnsc||1,q=p.add(L.point(nx*(tl+9*ts),ny*(tl+9*ts))),tw=S.ui.tnw||2;
-      L.marker(M.unproject(q,z),{interactive:false,keyboard:false,icon:L.divIcon({className:'',iconSize:null,iconAnchor:[0,0],html:`<span class="tick" style="font-size:${12*ts}px;line-height:${13*ts}px;font-weight:${tw>1?700:400};-webkit-text-stroke:${tw>2?((tw-2)*0.2*ts).toFixed(2):0}px #000">${Math.round(acc+t)}</span>`})}).addTo(g)}
-    acc+=nm})}
+      L.marker(M.unproject(q,z),{interactive:false,keyboard:false,icon:L.divIcon({className:'',iconSize:null,iconAnchor:[0,0],html:`<span class="tick" style="transform:translate(-50%,-50%) rotate(${ang.toFixed(1)}deg);color:${col};font-size:${12*ts}px;line-height:${13*ts}px;font-weight:${tw>1?700:400};-webkit-text-stroke:${tw>2?((tw-2)*0.2*ts).toFixed(2):0}px ${col}">${Math.round(acc+t)}</span>`})}).addTo(g)}
+    acc+=nm})};
+  if(S.ui.tickGo!==false)pass(S.pts,'#000');if(S.ui.tickBack)pass(S.pts.slice().reverse(),'#1546c8')}
 function legs(){eff();const kt=+$('kt').value||120;
   const L_=S.pts.slice(1).map((b,i)=>{const a=S.pts[i],c=legCalc(a,b),o=a.ov||{};
     const crs=c.tc;
@@ -679,7 +681,7 @@ function addFromForm(){if(S.ui.mode==='map')return alert('โหมด On MAP: �
 function setMode(m){S.ui.mode=m;$('mOn').classList.toggle('on',m==='map');$('mLL').classList.toggle('on',m==='ll');$('llBox').style.display=m==='ll'?'':'none';
   $('modeHint').textContent=m==='map'?'คลิกบนแผนที่เพื่อเพิ่มจุดด้วยค่าในฟอร์มนี้':'กรอกพิกัดแล้วกด Add ROUTE';
   map.getContainer().style.cursor=m==='map'?'crosshair':'';save()}
-function lineSel(){const a=(S.ui.route||'main')==='alt';$('lineSt').value=a?S.ui.lineAlt||'dash':S.ui.line||'solid';$('lineLb').textContent=a?'เส้นทางสำรอง':'เส้นทางหลัก';$('tickSt').value=S.ui.tick||0}
+function lineSel(){const a=(S.ui.route||'main')==='alt';$('lineSt').value=a?S.ui.lineAlt||'dash':S.ui.line||'solid';$('lineLb').textContent=a?'เส้นทางสำรอง':'เส้นทางหลัก';$('tickSt').value=S.ui.tick||0;$('tkGo').checked=S.ui.tickGo!==false;$('tkBk').checked=!!S.ui.tickBack}
 function setLine(v){if((S.ui.route||'main')==='alt')S.ui.lineAlt=v;else S.ui.line=v;draw()}
 function setStyle(s,user){S.ui.style=s;if(user){S.ui.line='solid';delete S.ui.lineAlt}lineSel();$('sA').classList.toggle('on',s==='anf');$('sC').classList.toggle('on',s==='cp');syncShow();draw()}
 map.on('zoomend',()=>{if(S.ui.style==='anf'||S.ui.tick)draw()});
