@@ -206,9 +206,9 @@ body{height:100dvh}
  </fieldset>
  <fieldset><legend>Export Map (พิมพ์ขนาดจริง แบ่งแผ่น)</legend>
   <div class="row"><div><div class="sm">มาตราส่วน 1:</div><select id="pS" onchange="prUpd();pvApply()"><option value="50000">50,000<option value="100000">100,000<option value="250000" selected>250,000<option value="500000">500,000<option value="1000000">1,000,000</select></div>
-   <div><div class="sm">กระดาษ</div><select id="pP" onchange="prUpd()"><option>A4<option>A3</select></div>
+   <div><div class="sm">Scale factor (%) <span id="pFi"></span></div><input id="pF" type="number" value="100" min="10" max="1000" step="5" title="ขยาย/ย่อจากมาตราส่วนแผนที่ เช่น 150% ของ 1:250,000 = 1:166,667" onchange="prUpd();pvApply()"></div></div>
+  <div class="row"><div><div class="sm">กระดาษ</div><select id="pP" onchange="prUpd()"><option>A4<option>A3</select></div>
    <div><div class="sm">แนว</div><select id="pO" onchange="prUpd()"><option value="p">ตั้ง<option value="l">นอน</select></div></div>
-  <div class="row"><div><div class="sm">Scale factor (%)</div><input id="pF" type="number" value="100" min="10" max="1000" step="5" title="ขยาย/ย่อจากมาตราส่วนแผนที่ เช่น 150% ของ 1:250,000 = 1:166,667" onchange="prUpd();pvApply()"></div><div class="sm" id="pFi" style="align-self:end;padding-bottom:6px"></div></div>
   <div class="row"><div><div class="sm">ทับขอบ (ซม.)</div><input id="pOv" type="number" value="1" min="1" step="0.5" onchange="prUpd()"></div>
    <div><div class="sm">ขอบเครื่องพิมพ์ (มม.)</div><input id="pM" type="number" value="6" min="0" onchange="prUpd()"></div></div>
   <label><input type="checkbox" id="pLb" checked onchange="prUpd()"> พิมพ์เลขแผ่น + scale bar ที่ขอบล่าง (นอกแผนที่)</label>
