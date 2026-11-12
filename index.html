@@ -344,9 +344,12 @@ function snap(){const j=JSON.stringify(S.pts,(k,v)=>k==='_auto'?undefined:v);if(
 function undo(){if(!HIST.length)return;undoing=true;S.pts=JSON.parse(HIST.pop());closeEd();draw();undoing=false}
 // route roles by position: first = PZ, last = LZ, the rest = CP (keeps a matching suffix like CP2)
 // CPs are numbered through the primary route first (CP1..n), then continue on the alternate route
+// a CP with a manual number (cpn) keeps it; auto numbers skip the numbers set by hand
 function fixTypes(){const dc=Object.values(COL).map(c=>c.toLowerCase()),onMain=(S.ui.route||'main')==='main';let k=0;
+  const used=new Set();[S.pts,S.alt].forEach(a=>(a||[]).forEach(p=>{if(p.cpn)used.add(+p.cpn)}));
+  const nx=()=>{do k++;while(used.has(k));return k};
   [onMain?S.pts:S.alt,onMain?S.alt:S.pts].forEach(arr=>{if(!arr)return;const n=arr.length;
-    arr.forEach((p,i)=>{const want=p.tf||(i===0?'PZ':i===n-1?'LZ':'CP'),t=want==='CP'?'CP'+(++k):want;if(p.type===t)return;
+    arr.forEach((p,i)=>{const want=p.tf||(i===0?'PZ':i===n-1?'LZ':'CP');if(want!=='CP')delete p.cpn;const t=want==='CP'?'CP'+(p.cpn||nx()):want;if(p.type===t)return;
       if(kind(p.type)!==want&&p.lcol!=null&&dc.includes(String(p.lcol).toLowerCase()))delete p.lcol;p.type=t})})}
 // ---- primary / alternate route: S.pts = route being edited, S.alt = the other one; PZ & LZ are shared ----
 const SHARE=['name','lat','lon','ltxt','lcol','lsc','msc','tbx','noTbl'];
@@ -537,6 +540,7 @@ function editLbl(i){const p=S.pts[i];
    <label>ชนิดจุด</label><div class="seg" style="margin:0;display:grid;grid-template-columns:repeat(4,1fr)">${(()=>{const c=kind(p.type)==='CP'?(inOther(p)>=0?'B':(S.ui.route||'main')==='main'?'M':'A'):kind(p.type);
      return [['PZ','PZ'],['LZ','LZ'],['M','CP หลัก'],['A','CP สำรอง'],['B','CP หลักและสำรอง']].map(([k,t])=>`<button class="${c===k?'on':''}"${k==='B'?' style="grid-column:1/-1"':''} onclick="setKind(${i},'${k}')">${t}</button>`).join('')})()}</div>
    <label>สีพื้น</label><input id="eK" type="color" value="${p.lcol||col(p.type)}">
+   ${kind(p.type)==='CP'?`<label>เลข CP (ว่าง = อัตโนมัติตามลำดับ)</label><div style="display:flex;gap:6px"><input id="eNo" type="number" min="1" max="999" inputmode="numeric" value="${p.cpn||''}" placeholder="${esc(p.type.slice(2))}" oninput="setCpn(${i},this.value)" style="flex:1"><button onclick="autoCpn()" title="ล้างเลข CP ที่ตั้งเอง ทุกจุด">เรียงอัตโนมัติทุกจุด</button></div>`:''}
    ${kind(p.type)==='CP'?`<div class="seg" style="margin:6px 0 2px"><button id="fO" class="${p.fly==='by'?'':'on'}" onclick="setFly(${i},0)">FLY OVER</button><button id="fB" class="${p.fly==='by'?'on':''}" onclick="setFly(${i},1)">FLY BY</button></div>`:''}
    <label style="color:#333"><input type="checkbox" id="eH" ${p.noTbl?'checked':''} style="width:auto"> ซ่อนตาราง TOTAL/ACTUAL/REMAIN</label>
    <label>ข้อมูลตาราง (เว้นว่าง = ค่าอัตโนมัติ)</label><div class="g">${(p._auto||[]).map((v,k)=>`<input id="tv${k}" value="${esc((p.tv||[])[k])}" placeholder="${esc(v)}">`).join('')}</div>
@@ -553,7 +557,7 @@ function setKind(i,k){const P=S.pts,p=P[i],onMain=(S.ui.route||'main')==='main';
   if(k==='PZ'||k==='LZ'){P.splice(i,1);const o=k==='PZ'?P[0]:P[P.length-1];if(o&&kind(o.type)===k)o.tf='CP';
     p.tf=k;delete p.fly;if(k==='PZ')P.unshift(p);else P.push(p);closeEd();draw();return}
   const oi=inOther(p);
-  if(k==='B'){if(oi>=0)return;if(!ensAlt())return;p.tf='CP';const T=S.alt,q={type:'CP',tf:'CP',name:p.name,lat:p.lat,lon:p.lon};if(p.ord!=null)q.ord=p.ord;if(p.fly)q.fly=p.fly;
+  if(k==='B'){if(oi>=0)return;if(!ensAlt())return;p.tf='CP';const T=S.alt,q={type:'CP',tf:'CP',name:p.name,lat:p.lat,lon:p.lon};if(p.ord!=null)q.ord=p.ord;if(p.cpn)q.cpn=p.cpn;if(p.fly)q.fly=p.fly;
     T.splice(insAt(T,q),0,q);closeEd();draw();routeBtns();editLbl(i);return}
   if((k==='A')===!onMain){p.tf='CP';if(oi>=0)S.alt.splice(oi,1);draw();editLbl(i);return} // CP of this route only: drop its copy from the other route
   if(oi>=0){resetBox(i-1);P.splice(i,1);closeEd();draw();return} // shared CP -> keep only the copy on the other route
@@ -569,6 +573,8 @@ function insAt(T,p){const n=T.length,end=n&&kind(T[n-1].type)==='LZ'?n-1:n;
   if(p.ord!=null){for(let j=1;j<end;j++)if(T[j].ord!=null&&T[j].ord>p.ord)return j;}
   let best=end,bd=1/0;const d=(a,b)=>Math.hypot(a.lat-b.lat,(a.lon-b.lon)*Math.cos(a.lat*Math.PI/180));
   for(let j=1;j<n;j++){const x=d(T[j-1],p)+d(p,T[j])-d(T[j-1],T[j]);if(x<bd){bd=x;best=j}}return best}
+function setCpn(i,v){const p=S.pts[i],n=parseInt(v,10),oi=inOther(p),q=oi>=0?S.alt[oi]:null;const old=(p.type+' '+p.name).trim();[p,q].forEach(x=>{if(!x)return;if(n>0)x.cpn=n;else delete x.cpn});draw();const e=$('eNo'),l=$('eL');if(e)e.placeholder=p.type.slice(2);if(l&&l.value===old){l.value=(p.type+' '+p.name).trim();l.placeholder=l.value}}
+function autoCpn(){[S.pts,S.alt].forEach(a=>(a||[]).forEach(p=>delete p.cpn));closeEd();draw()}
 function setFly(i,by){const p=S.pts[i];if(by)p.fly='by';else delete p.fly;$('fO').classList.toggle('on',!by);$('fB').classList.toggle('on',!!by);draw()}
 function saveLbl(i){const p=S.pts[i];p.ltxt=$('eL').value.trim();if(p.ltxt===(p.type+' '+p.name).trim())p.ltxt='';p.lcol=$('eK').value;if(p.lcol.toLowerCase()===col(p.type).toLowerCase())delete p.lcol;p.noTbl=$('eH').checked;p.tv=[...Array(12)].map((_,k)=>$('tv'+k)?.value.trim()||'');
   if($('lAll').checked){S.ui.lsc=p.lsc;S.ui.msc=p.msc;S.pts.forEach(q=>{delete q.lsc;delete q.msc;q.tbx=p.tbx})}closeEd();draw()}
@@ -591,7 +597,7 @@ function revPts(){const n=S.pts.length;if(n<2)return;
   S.pts.forEach((p,j)=>{const d=j<n-1?legd[n-2-j]:{box:undefined,boff:undefined,poff:undefined,psc:undefined,ph:undefined,ov:undefined,alt:'',bx:undefined,bsc:undefined,ln:undefined,lw:undefined};Object.assign(p,d)});
   const f=S.pts[0],z=S.pts[n-1];if(kind(f.type)==='LZ'&&kind(z.type)==='PZ'){f.type='PZ'+f.type.slice(2);z.type='LZ'+z.type.slice(2);[f.lcol,z.lcol]=[z.lcol,f.lcol];const dc=[COL.PZ,COL.LZ].map(c=>c.toLowerCase());[f,z].forEach(p=>{if(p.lcol==null||dc.includes(String(p.lcol).toLowerCase()))delete p.lcol})}
 }
-function reverseRoute(){if(S.pts.length<2)return;revPts();if(S.alt&&S.alt.length>1){[S.pts,S.alt]=[S.alt,S.pts];revPts();[S.pts,S.alt]=[S.alt,S.pts]}draw()}
+function reverseRoute(){if(S.pts.length<2)return;[S.pts,S.alt].forEach(a=>(a||[]).forEach(p=>{const m=/^CP(\d+)$/.exec(p.type);if(m&&!p.cpn)p.cpn=+m[1]}));revPts();if(S.alt&&S.alt.length>1){[S.pts,S.alt]=[S.alt,S.pts];revPts();[S.pts,S.alt]=[S.alt,S.pts]}draw()}
 function setLL(i,k,v){const x=parseCoord(v);if(x===null)return alert('รูปแบบพิกัดไม่ถูกต้อง');S.pts[i][k]=x;draw()}
 function resetBox(...ix){ix.forEach(k=>{const p=S.pts[k];if(p){delete p.boff;delete p.box;delete p.poff}})}
 function mv(i,d){if(i+d<0||i+d>=S.pts.length)return;resetBox(i-1,i,i+d-1,i+d);[S.pts[i],S.pts[i+d]]=[S.pts[i+d],S.pts[i]];draw()}
