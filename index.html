@@ -82,6 +82,7 @@ fieldset label{display:block;margin:4px 0}
 .pg .inf{display:flex;align-items:center;gap:4mm;height:8mm;padding-top:1mm;font:8pt Tahoma,sans-serif;color:#000;white-space:nowrap;overflow:hidden}
 .pg .nb{color:#d00;font-weight:bold}
 .sb{display:flex;align-items:center;gap:1.5mm}.sb i{display:inline-block;height:1.6mm;border:.25mm solid #000}
+.tick{position:absolute;transform:translate(-50%,-50%);font:bold 12px var(--mf);color:#000;line-height:13px;white-space:nowrap}
 .pgn{background:#d00;color:#fff;font:bold 13px Tahoma;padding:1px 6px;border-radius:3px;transform:translate(-50%,-50%);display:inline-block;white-space:nowrap}
 @media print{body.prtmode{display:block;height:auto;background:#fff}body.prtmode>*:not(#prt){display:none!important}body.prtmode #prt{position:static}}
 fieldset>*:not(legend){clear:both}
@@ -317,7 +318,10 @@ function drawTicks(g,anf){const D=+S.ui.tick||0;if(!D||S.pts.length<2)return;con
     const pa=M.project([LA(a),LO(a)],z),pb=M.project([LA(b),LO(b)],z),d=pb.subtract(pa),len=d.distanceTo([0,0])||1,u=d.divideBy(len),nx=-u.y,ny=u.x;
     const ra=anf?RING*(a.msc||S.ui.msc||1):0,rb=anf?RING*(b.msc||S.ui.msc||1):0,w=a.lw||S.ui.lw||3*(S.ui.lwc||1),h=6+w;
     for(let t=D-(acc%D);t<nm-1e-6;t+=D){const p=pa.add(d.multiplyBy(t/nm)),dp=t/nm*len;if(dp<ra||len-dp<rb)continue;
-      L.polyline([M.unproject(p.add(L.point(nx*h,ny*h)),z),M.unproject(p.subtract(L.point(nx*h,ny*h)),z)],{color:'#000',weight:Math.max(2,w*0.7),interactive:false}).addTo(g)}
+      // tick on the RIGHT of the direction of flight (screen y points down), with the distance since the last reset
+      L.polyline([M.unproject(p,z),M.unproject(p.add(L.point(nx*h*1.6,ny*h*1.6)),z)],{color:'#000',weight:Math.max(2,w*0.7),interactive:false}).addTo(g);
+      const q=p.add(L.point(nx*(h*1.6+9),ny*(h*1.6+9)));
+      L.marker(M.unproject(q,z),{interactive:false,keyboard:false,icon:L.divIcon({className:'',iconSize:null,iconAnchor:[0,0],html:`<span class="tick">${Math.round(acc+t)}</span>`})}).addTo(g)}
     acc+=nm})}
 function legs(){eff();const kt=+$('kt').value||120;
   const L_=S.pts.slice(1).map((b,i)=>{const a=S.pts[i],c=legCalc(a,b),o=a.ov||{};
