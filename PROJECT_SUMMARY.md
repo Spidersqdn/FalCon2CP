@@ -1,6 +1,6 @@
 # FalCon2CP – Project Summary (for AI agents / new contributors)
 
-Last updated: 2026-11-15 (display controls and map edit lock). Owner: SPD (`Spidersqdn`). Owner writes Thai; reply concise, copy-paste ready.
+Last updated: 2026-11-15 (mobile menu gestures and paper pinch zoom). Owner: SPD (`Spidersqdn`). Owner writes Thai; reply concise, copy-paste ready.
 
 ## 1. Purpose
 Web app for helicopter mission route maps on FalconView (CADRG/RPF) charts, styled like **AirNavFlow**
@@ -76,6 +76,9 @@ README.md             user guide (Thai)
   Map panning and zoom remain available; map-click point creation and popup Add ROUTE are blocked until unlocked. Lock state persists.
 - Coordinates in DDM and MGRS. Base maps: PMTiles charts, OSM, satellite (Esri).
 - Export PDF / Print: preview dialog, true scale (1:50k–1:1M), A4/A3, draggable sheets, overlap ticks, paper view %.
+- Paper view supports two-finger map pinch via `pvPinch*`/`pvEndPinch`: live 10–400% display zoom, anchored at finger midpoint;
+  print scale stays fixed. Map controls keep their visual size via `--pv-ui`; `fitLayers` uses physical screen height.
+  Menu gestures are excluded; map dragging resumes and % is saved when the pinch ends.
 - SLIDE: 16:9 Mission Overview PNG (map rendered in cp style + table template).
 - PWA install, offline cache of viewed areas, auto update.
 
@@ -103,6 +106,8 @@ Keep separate source positions even when nearby (some are approximate). Airport 
 - **Owner uses Safari (iPad/iPhone)** – test WebKit behaviour; Safari ignores `@page` margins (hence jsPDF export).
 - Layout: PC sidebar fixed **390px** (same as AirNavFlow `#panel`); responsive for phone/tablet;
   phone landscape (max-height:500px) uses floating editor `#edp` instead of the side panel (`isSheet()`).
+- Touch menus use `touch-action:pan-x pan-y` to stop page pinch/double-tap zoom while retaining scrolling and taps.
+  `menuTouchTarget` scopes Safari gesture cancellation to menus/toolbars; do not disable viewport zoom globally or change Leaflet map gestures.
 - CSS class **`.ed` is taken** (leg edit grid) – don't reuse the name.
 - **Type and ALT input fields were removed** on purpose; kind is automatic by order. Don't add them back.
 - UI labels: English section names (MAP, SHOW PZ CPs LZ, SHOW DOG LEGs, UNDO / BACK TRACK / CLEAR) + Thai words
