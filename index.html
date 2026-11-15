@@ -41,6 +41,7 @@ body.hide #side{display:none}
 #srch{display:flex;gap:6px;margin-top:8px}#srch input{flex:1;min-width:0;font-family:inherit;padding:7px 9px}#srch button{margin:0;flex:none}
 #srR{margin-top:4px;max-height:220px;overflow:auto}#srR div{padding:6px 4px;border-bottom:1px dotted var(--ln);cursor:pointer;font-size:13px}#srR div:hover{background:#3a3d42}#srR b{color:var(--au);font-family:Consolas,monospace;margin-right:6px}#srR small{display:block;color:var(--mu);font-size:11px}
 .srp b{font-size:14px}.srp .m{font:12px Consolas,monospace;margin:4px 0}.srp button{width:100%;margin-top:6px}
+.ap-icon{background:none;border:0}.ap-icon svg{display:block;width:28px;height:28px}
 #prof{padding:10px 14px 12px;border-bottom:1px solid var(--ln)}#prof .ph{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}#prof .ph b{font-size:14px}#prof .ph span{font:11px Consolas,monospace;color:var(--mu)}
 #prG svg{display:block;width:100%;height:auto;background:#2b2e33;border:1px solid var(--ln);border-radius:8px}#prG .e{color:var(--mu);font-size:11px;padding:8px 0}
 #stats #kt{width:110px;font:bold 22px Consolas,monospace;padding:1px 6px;margin:0}
@@ -171,6 +172,8 @@ body{height:100dvh}
  <div id="prof"><div class="ph"><b>Elevation Profile</b><span id="prM"></span></div><div id="prG"></div></div>
  <fieldset><legend>MAP</legend>
   <select id="mapSel" style="width:100%" onchange="pickMap(this.value)"></select>
+  <label style="display:block;margin:8px 0"><input type="checkbox" id="shAirports" onchange="setAirports(this.checked)"> AIRPORTS · สนามบิน</label>
+  <div class="sm" id="apInfo" role="status" aria-live="polite"></div>
   <label><input type="checkbox" id="offl" checked onchange="save()"> เก็บแผนที่ที่เปิดดูไว้ใช้ offline</label>
   <div class="row" style="gap:6px;margin:4px 0"><button class="pri" onclick="lmPick()">📁 IMPORT MAP</button><button id="lmDel" onclick="lmDel()" style="display:none;flex:0 0 auto" title="ลบแผนที่นี้ออกจากเครื่อง">ลบ</button></div>
   <input type="file" id="lmIn" accept=".pmtiles" multiple style="display:none" onchange="lmAdd(this.files);this.value=''">
@@ -694,7 +697,8 @@ map.on('click',e=>{if($('edp').style.display==='block'){closeEd();return}if(S.ui
 // ---- Place search (like AirNavFlow): data from DataBase CoWork (shared with AirNavFlow), offline copy in localStorage ----
 // AP.txt airports, สนามบิน ทบ.txt Army airfields/units/camps, AD.txt freqs (popup), places.json OSM names; else Nominatim online
 const CW=(window.CONFIG&&CONFIG.COWORK_URL)||'https://spidersqdn.github.io/DataBase/CoWork/';
-let PL=null,AD=null,srMk=null;
+let PL=null,AP=null,AD=null,srMk=null,apPending=null,plPending=null;
+const apGrp=L.layerGroup(); // independent of route redraws and route SHOW flags
 function cwGet(f,json){const k='cw:'+f;
   return fetch(CW+encodeURIComponent(f),{cache:'no-cache'}).then(r=>{if(!r.ok)throw 0;return r.text()}).then(t=>{try{localStorage.setItem(k,t)}catch(e){}return t})
    .catch(()=>{try{return localStorage.getItem(k)}catch(e){return null}}).then(t=>{if(!t)return json?null:[];if(json){try{return JSON.parse(t)}catch(e){return null}}
@@ -717,14 +721,31 @@ function mgrsLL(s){const m=/^(\d{1,2})([C-X])([A-Z])([A-Z])(\d*)$/.exec(String(s
   const lat=p1-(N1*Math.tan(p1)/R1)*(D*D/2-(5+3*T1+10*C1-4*C1*C1-9*ep)*D**4/24+(61+90*T1+298*C1+45*T1*T1-252*ep-3*C1*C1)*D**6/720),
    lon=(D-(1+2*T1+C1)*D**3/6+(5-2*C1+28*T1-3*C1*C1+8*ep+24*T1*T1)*D**5/120)/Math.cos(p1);
   return [lat*180/Math.PI,(z-1)*6-180+3+lon*180/Math.PI]}
-function plLoad(){if(PL)return Promise.resolve(PL);
-  return Promise.all([cwGet('AP.txt'),cwGet('สนามบิน ทบ.txt'),cwGet('AD.txt'),cwGet('places.json',1)]).then(([ap,ar,ad,pj])=>{
+function apLoad(){if(AP)return Promise.resolve(AP);if(apPending)return apPending;
+  apPending=Promise.all([cwGet('AP.txt'),cwGet('สนามบิน ทบ.txt'),cwGet('AD.txt')]).then(([ap,ar,ad])=>{
    AD={};ad.forEach(r=>{if(r[0]&&r[1]&&r[1]!=='MORSE')(AD[r[0].toUpperCase()]=AD[r[0].toUpperCase()]||[]).push(r[1]+' '+(r[2]||''))});
-   PL=[];ap.forEach(r=>{const la=cwDeg(r[4]),lo=cwDeg(r[5]);if(la!=null&&lo!=null)PL.push({id:(r[0]||'').toUpperCase(),n:r[2]||'',sub:(r[3]||'')+(r[1]?' · '+r[1]:''),lat:la,lon:lo,el:r[6],k:'AD'})});
+   const pts=[];ap.forEach(r=>{const la=cwDeg(r[4]),lo=cwDeg(r[5]);if(la!=null&&lo!=null)pts.push({id:(r[0]||'').toUpperCase(),n:r[2]||'',sub:(r[3]||'')+(r[1]?' · '+r[1]:''),lat:la,lon:lo,el:r[6],k:'AD'})});
    ar.forEach(r=>{const dd=/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/.exec(r[2]||''),ll=dd?[+dd[1],+dd[2]]:mgrsLL(r[2]);
-    if(ll)PL.push({id:'',n:r[1]||'',sub:r[3]||'',lat:ll[0],lon:ll[1],k:/ค่าย/.test(r[0])?'CAMP':/หน่วย/.test(r[0])?'UNIT':'ARMY'})});
+    if(ll)pts.push({id:'',n:r[1]||'',sub:r[3]||'',lat:ll[0],lon:ll[1],k:/ค่าย/.test(r[0])?'CAMP':/หน่วย/.test(r[0])?'UNIT':'ARMY'})});
+   const valid=pts.filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon)&&Math.abs(p.lat)<=90&&Math.abs(p.lon)<=180);
+   if(valid.length){AP=valid;PL=null}return valid // retry empty failures; refresh search after recovery
+  }).finally(()=>{apPending=null});return apPending}
+function plLoad(){if(PL)return Promise.resolve(PL);if(plPending)return plPending;
+  plPending=Promise.all([apLoad(),cwGet('places.json',1)]).then(([ap,pj])=>{PL=ap.slice();
    if(pj&&pj.p)pj.p.forEach(a=>PL.push({id:'',n:a[0]||a[1],sub:(a[0]&&a[1]?a[1]+' · ':'')+((pj.kinds||[])[a[4]]||''),lat:a[2],lon:a[3],k:'OSM'}));
-   return PL})}
+   const result=PL;if(!result.length)PL=null;return result}).finally(()=>{plPending=null});return plPending}
+function apDraw(g,interactive){const M=g._map;if(!M)return 0;
+  if(!M.getPane('airports'))M.createPane('airports').style.zIndex=390; // below route lines/symbols
+  const icon=L.divIcon({className:'ap-icon',iconSize:[28,28],iconAnchor:[14,14],popupAnchor:[0,-14],html:'<svg viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="12" fill="#fff" fill-opacity=".92" stroke="#8d248c" stroke-width="2"/><path d="M14 5l2 7 7 4v2l-7-2v5l2 2v1l-4-1-4 1v-1l2-2v-5l-7 2v-2l7-4z" fill="#8d248c"/></svg>'});
+  const pts=(AP||[]).filter(p=>p.k==='AD'||p.k==='ARMY');
+  pts.forEach(p=>{const mk=L.marker([p.lat,p.lon],{icon,pane:'airports',interactive,keyboard:interactive,bubblingMouseEvents:false,title:(p.id?p.id+' ':'')+p.n}).addTo(g);
+    if(interactive){mk.bindTooltip(esc((p.id?p.id+' ':'')+p.n));mk.bindPopup(()=>srPopup(p),{maxWidth:280})}});return pts.length}
+async function setAirports(v){S.ui.airports=!!v;$('shAirports').checked=!!v;save();
+  apGrp.clearLayers();map.removeLayer(apGrp);$('apInfo').textContent='';if(!v)return;
+  apGrp.addTo(map);$('apInfo').textContent='กำลังโหลดสนามบิน…';
+  try{await apLoad();if(!S.ui.airports)return;apGrp.clearLayers();const n=apDraw(apGrp,true);
+    $('apInfo').textContent=n?`แสดง ${n} ตำแหน่ง · แตะสัญลักษณ์เพื่อดูข้อมูล`:'ยังไม่มีข้อมูลสนามบิน · เชื่อมต่อเน็ตแล้วปิด–เปิด AIRPORTS อีกครั้ง'}
+  catch(e){if(S.ui.airports)$('apInfo').textContent='โหลดสนามบินไม่สำเร็จ · ปิด–เปิด AIRPORTS เพื่อลองใหม่'}}
 const plNorm=t=>String(t||'').toUpperCase().replace(/\s+/g,'');
 function plFind(q){const u=plNorm(q);if(!u||!PL)return [];const ex=PL.filter(p=>p.id===u);if(ex.length)return ex;
   const r=[];for(const p of PL){if(plNorm(p.id+p.n+p.sub).includes(u)){r.push(p);if(r.length>=12)break}}return r}
@@ -737,12 +758,13 @@ function srGo(){const q=$('srQ').value.trim();if(!q)return;
    fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=th&q='+encodeURIComponent(q)).then(r=>r.json()).then(j=>{
     if(!j.length)return alert('ไม่พบสถานที่');const f=String(j[0].display_name||q);
     srShow({id:'',n:f.split(',')[0].trim()||q,sub:f,lat:+j[0].lat,lon:+j[0].lon,k:'OSM'})}).catch(()=>alert('ค้นหาสถานที่ไม่สำเร็จ (ต้องต่อเน็ต)'))})}
-function srShow(p){if(!p)return;$('srR').innerHTML='';
+function srPopup(p){
   const nm=(p.id?p.id+' ':'')+p.n,ad=p.id&&AD&&AD[p.id]||[];window.srCur={p,nm};
-  const h=`<div class="srp"><b>${esc(nm)}</b><div style="color:#555;font-size:12px">${esc(PL_K[p.k]||'')}${p.sub?' · '+esc(p.sub):''}</div>
+  return `<div class="srp"><b>${esc(nm)}</b><div style="color:#555;font-size:12px">${esc(PL_K[p.k]||'')}${p.sub?' · '+esc(p.sub):''}</div>
    <div class="m">${ddm(p.lat)}&nbsp; ${ddm(p.lon)}<br>MGRS ${mgrs(p.lat,p.lon)}${p.el!=null&&p.el!==''?'<br>ELEV '+esc(p.el)+' ft':''}</div>
    ${ad.length?`<div class="m" style="max-height:110px;overflow:auto;color:#333">${ad.slice(0,12).map(esc).join('<br>')}</div>`:''}
-   <button class="pri" onclick="srAdd()">Add ROUTE</button></div>`;
+   <button class="pri" onclick="srAdd()">Add ROUTE</button></div>`}
+function srShow(p){if(!p)return;$('srR').innerHTML='';const h=srPopup(p);
   if(srMk)map.removeLayer(srMk);
   srMk=L.circleMarker([p.lat,p.lon],{radius:8,color:'#F2B43C',weight:3,fill:false}).addTo(map).bindPopup(h,{maxWidth:280}).on('popupclose',function(){map.removeLayer(this);if(srMk===this)srMk=null});
   map.flyTo([p.lat,p.lon],Math.max(map.getZoom(),11));map.once('moveend',()=>srMk&&srMk.openPopup())}
@@ -851,6 +873,7 @@ async function slMap(c,X,Y,W,H){if(!window.html2canvas)await loadJS('lib/html2ca
   try{const ctr=m.unproject(m.project(LB.getCenter(),z).subtract([0,35]),z);m.setView(ctr,z,{animate:false});
     const src=tileSrc(),lay=new HiRes({tileSize:128,src,maxNativeZoom:src.max-1,minNativeZoom:Math.max(0,src.min-1),keepBuffer:0,updateWhenIdle:false});
     const ok=new Promise(res=>{const t=setTimeout(res,30000);lay.once('load',()=>{clearTimeout(t);res()})});lay.addTo(m);
+    if(S.ui.airports){await apLoad();apDraw(L.layerGroup().addTo(m),false)}
     const st=S.ui.style;S.ui.style='cp';try{drawRoutes(L.layerGroup().addTo(m),true)}finally{S.ui.style=st}
     await ok;await new Promise(r=>setTimeout(r,300));
     const cv=await html2canvas(box,{scale:Math.min(2,2*W/bw),useCORS:true,backgroundColor:'#fff',logging:false,onclone:d=>{d.body.classList.add('pdfcap');d.getElementById('slMapBox').style.left='0'}});
@@ -947,6 +970,7 @@ const HiRes=L.GridLayer.extend({createTile(co,done){const img=document.createEle
 // build off-screen sheet pages (#prt .pg) and wait for their tiles; returns config or null
 async function buildPages(){const {c,pages,nr,nc}=prPages();if(!pages.length){alert('ยังไม่มีเส้นทาง');return null}
   if(pages.length>40&&!confirm(pages.length+' แผ่น ใช้เวลาโหลดนาน ต่อหรือไม่?'))return null;
+  if(S.ui.airports)await apLoad();
   const st=$('pgCss')||document.head.appendChild(Object.assign(document.createElement('style'),{id:'pgCss'}));
   st.textContent=`@page{size:${c.paper} ${c.land?'landscape':'portrait'};margin:${c.m}mm}`;
   prMaps.forEach(m=>m.remove());prMaps=[];const box=$('prt');box.innerHTML='';const src=tileSrc();let done=0;
@@ -960,7 +984,7 @@ async function buildPages(){const {c,pages,nr,nc}=prPages();if(!pages.length){al
     prMaps.push(m);m.setView(p.center,zoomFor(p.center.lat,c.S),{animate:false});
     const lay=new HiRes({tileSize:128,src,maxNativeZoom:src.max-1,minNativeZoom:Math.max(0,src.min-1),keepBuffer:0,updateWhenIdle:false});
     const ok=new Promise(res=>{const t=setTimeout(res,90000);lay.once('load',()=>{clearTimeout(t);res()})}).then(()=>{$('pInfo').textContent=`โหลดแผนที่ ${++done}/${pages.length} แผ่น`});
-    lay.addTo(m);drawRoutes(L.layerGroup().addTo(m),true);
+    lay.addTo(m);if(S.ui.airports)apDraw(L.layerGroup().addTo(m),false);drawRoutes(L.layerGroup().addTo(m),true);
     const nb=(r,q)=>r>=0&&r<nr&&q>=0&&q<nc?r*nc+q+1:0,o=c.ov+'mm',el=[],nbs=[];
     const tk='6mm',h=(y,e)=>[`left:0;width:${tk};${y}:${o};border-${e}-width:.5mm`,`right:0;width:${tk};${y}:${o};border-${e}-width:.5mm`],
       v=(x,e)=>[`top:0;height:${tk};${x}:${o};border-${e}-width:.5mm`,`bottom:0;height:${tk};${x}:${o};border-${e}-width:.5mm`];
@@ -1005,5 +1029,5 @@ if(!S.pts.length&&!localStorage.getItem('routeS'))S.pts=[{type:'PZ',name:'ท่
 if(new URLSearchParams(location.search).get('map')||!S.cfg||!/^(https?|local):/.test($('tileUrl').value))$('tileUrl').value=qm||$('tileUrl').value;
 [...(window.CONFIG&&CONFIG.MAPS||[]),{name:'OpenStreetMap (offline cache)',url:'osm'},{name:'ภาพดาวเทียม (Esri)',url:'sat'}].forEach(m=>$('mapSel').add(new Option(m.name,m.url)));
 $('mapSel').add(new Option('-- URL เอง --',''));$('mapSel').value=$('tileUrl').value===OSM?'osm':$('tileUrl').value===SAT?'sat':$('tileUrl').value;
-globSizes();setMode(S.ui.mode);routeBtns();setStyle(S.ui.style);setBase();togTxt();if(S.pts.length)map.fitBounds(S.pts.map(p=>[p.lat,p.lon]),{padding:innerWidth<700?[30,30]:[120,120]});else map.setView([16.1168,103.7741],9);cacheInfo();lmInit();
+globSizes();setMode(S.ui.mode);routeBtns();setStyle(S.ui.style);setBase();togTxt();if(S.pts.length)map.fitBounds(S.pts.map(p=>[p.lat,p.lon]),{padding:innerWidth<700?[30,30]:[120,120]});else map.setView([16.1168,103.7741],9);cacheInfo();lmInit();setAirports(S.ui.airports);
 </script></body></html>
