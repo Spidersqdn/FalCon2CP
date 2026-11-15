@@ -46,8 +46,9 @@ body.hide #side{display:none}
 .ap-layers summary{display:flex;align-items:center;gap:7px;cursor:pointer;list-style:none;padding:8px;min-width:36px;min-height:36px}
 .ap-layers summary::-webkit-details-marker{display:none}.ap-layers summary svg{width:20px;height:20px;flex:none}
 .ap-layers summary span{display:none}.ap-layers[open] summary span{display:inline;font-weight:bold}
-.ap-layers[open]{width:min(280px,calc(100vw - 20px))}.ap-options{padding:0 10px 10px}
-.ap-options label{display:block;color:inherit;font-size:12px}.ap-options .sm{color:#b9c8d6;margin-top:5px}
+.ap-layers[open]{width:min(280px,calc(100vw - 20px))}.ap-options{padding:0 10px 10px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.ap-options label{display:block;color:inherit;font-size:12px;margin:6px 0}.ap-options .sm{color:#b9c8d6;margin-top:5px}
+#showOptions{border-top:1px solid #666d76;margin-top:8px;padding-top:6px}#shHd{font-weight:bold;margin:0 0 5px}
 .leaflet-touch .ap-layers summary{padding:12px;min-width:44px;min-height:44px}
 #prof{padding:10px 14px 12px;border-bottom:1px solid var(--ln)}#prof .ph{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}#prof .ph b{font-size:14px}#prof .ph span{font:11px Consolas,monospace;color:var(--mu)}
 #prG svg{display:block;width:100%;height:auto;background:#2b2e33;border:1px solid var(--ln);border-radius:8px}#prG .e{color:var(--mu);font-size:11px;padding:8px 0}
@@ -110,6 +111,10 @@ fieldset>*:not(legend){clear:both}
 .btns{display:grid;grid-template-columns:1fr 1fr;gap:2px}.btns button{padding:0 2px;margin:0;font-size:11px;color:var(--cy);line-height:18px}.btns .x{color:#ff6b6b}
 .ed{display:none;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:6px}.ed.on{display:grid}.ed input{width:100%;padding:4px}
 .pct{display:flex;align-items:center;gap:6px}.pct input[type=range]{flex:1;min-width:0}.pct input[type=number]{width:56px;flex:none;text-align:center}.pct .stp{flex:none;width:30px;padding:2px 0;margin:0;font-size:15px;line-height:22px}
+.pv-tools{display:flex;align-items:center;gap:6px;margin-top:4px}.pv-tools #pvBox{flex:1;min-width:0}
+#editLock{flex:none;min-width:40px;min-height:36px;padding:4px;font-size:18px}
+.leaflet-touch #editLock{min-width:44px;min-height:44px}
+#map.edit-locked .lbl{pointer-events:none}
 .mk{width:24px;height:24px;border-radius:50%;background:#000;border:2px solid #fff;color:#fff;font:bold 13px var(--mf);display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px #0008}
 .ring{border-radius:50%;border:3px solid #000;background:transparent;box-sizing:border-box}
 .legt{background:#fff;color:#000;border:1.5px solid #000;font:bold 12px var(--mf);padding:1px 6px;white-space:nowrap;display:inline-block}
@@ -175,6 +180,12 @@ body{height:100dvh}
  <div id="hdr"><b><img src="icon.svg" alt="" style="width:22px;height:22px;vertical-align:-4px;margin-right:6px">FalCon2CP</b><small>ROUTE PLANNER · PZ / CP / LZ</small>
   <form id="srch" onsubmit="event.preventDefault();srGo()"><input id="srQ" type="search" placeholder="ICAO เช่น VTBL, VTBS หรือชื่อสถานที่" aria-label="ค้นหาสถานที่" autocomplete="off" oninput="srList()"><button type="submit">ค้นหา</button></form>
   <div id="srR"></div></div>
+ <fieldset id="paperView">
+  <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center"><button id="pvB" style="flex:1 1 140px" onclick="pvToggle()" title="แสดงแผนที่เท่ากระดาษจริงที่มาตราส่วนนี้ ป้าย/กล่อง/ตัวอักษรจะมีขนาดเทียบกับแผนที่เหมือนตอนพิมพ์">📄 มุมมองกระดาษ</button>
+   <button onclick="pvSet(100)" style="width:auto">100%</button></div>
+  <div class="pv-tools"><div id="pvBox"></div><button type="button" id="editLock" onclick="setEditLock(!editLocked())" title="ล็อกการแก้ไขบนแผนที่" aria-label="ล็อกการแก้ไขบนแผนที่" aria-pressed="false">🔓</button></div>
+  <div class="sm">มุมมองกระดาษ: 100% = ขนาดเท่ากระดาษจริง (ตามมาตรฐานจอ 96 px/นิ้ว) · ล้อเมาส์/ปุ่ม −/+ = ย่อ/ขยาย % · จัดป้าย/กล่องได้ตามที่จะพิมพ์</div>
+ </fieldset>
  <div id="stats"><div>Distance<b id="stD">-</b></div><div>Flight Time<b id="stT">-</b></div><div>Waypoints<b id="stN">-</b></div><div>GS (KTS)<b><input id="kt" type="number" min="1" value="120" title="Ground speed"></b></div></div>
  <div id="prof"><div class="ph"><b>Elevation Profile</b><span id="prM"></span></div><div id="prG"></div></div>
  <fieldset><legend>MAP</legend>
@@ -196,9 +207,15 @@ body{height:100dvh}
  </fieldset>
  <fieldset><legend>FLIGHT ROUTE Waypoint</legend>
   <div class="seg" id="rSeg"><button id="rMain" onclick="setRoute('main')">เส้นทางหลัก</button><button id="rSw" onclick="swapRoutes()" title="สลับเส้นทางหลัก ↔ สำรอง" style="flex:0 0 38px">⇄</button><button id="rAlt" onclick="setRoute('alt')">เส้นทางสำรอง</button><button id="rDel" onclick="delAlt()" title="ลบเส้นทางสำรอง" style="flex:0 0 38px">✕</button></div>
-  <div class="sm" id="shHd" style="margin:-2px 0 4px"></div>
-  <div class="row" style="margin:0 0 8px;gap:8px 12px;flex-wrap:wrap"><label style="flex:none"><input type="checkbox" id="shMain" onchange="setSh('main',this.checked)" style="width:auto"> SHOW เส้นทางหลัก</label><label style="flex:none"><input type="checkbox" id="shAlt" onchange="setSh('alt',this.checked)" style="width:auto"> SHOW เส้นทางสำรอง</label></div>
-  <div class="row" style="margin:-4px 0 8px;gap:8px 12px;flex-wrap:wrap"><label style="flex:none"><input type="checkbox" id="shLbl" checked onchange="setSh('lbl',this.checked)" style="width:auto"> <span id="shLblT">SHOW PZ CPs LZ</span></label><label style="flex:none"><input type="checkbox" id="shBox" checked onchange="setSh('box',this.checked)" style="width:auto"> SHOW DOG LEGs</label><label style="flex:none" id="shRnmL"><input type="checkbox" id="shRnm" checked onchange="setSh('rnm',this.checked)" style="width:auto"> SHOW คำแสดง หลัก/สำรอง ในตาราง (มุมซ้ายบน)</label><label style="flex:none" id="shPillL"><input type="checkbox" id="shPill" checked onchange="setSh('pill',this.checked)" style="width:auto"> SHOW LEG</label></div>
+  <div id="showOptions">
+   <div class="sm" id="shHd"></div>
+   <label><input type="checkbox" id="shMain" onchange="setSh('main',this.checked)" style="width:auto"> SHOW เส้นทางหลัก</label>
+   <label><input type="checkbox" id="shAlt" onchange="setSh('alt',this.checked)" style="width:auto"> SHOW เส้นทางสำรอง</label>
+   <label><input type="checkbox" id="shLbl" checked onchange="setSh('lbl',this.checked)" style="width:auto"> <span id="shLblT">SHOW PZ CPs LZ</span></label>
+   <label><input type="checkbox" id="shBox" checked onchange="setSh('box',this.checked)" style="width:auto"> SHOW DOG LEGs</label>
+   <label id="shRnmL"><input type="checkbox" id="shRnm" checked onchange="setSh('rnm',this.checked)" style="width:auto"> SHOW คำแสดง หลัก/สำรอง ในตาราง (มุมซ้ายบน)</label>
+   <label id="shPillL"><input type="checkbox" id="shPill" checked onchange="setSh('pill',this.checked)" style="width:auto"> SHOW LEG</label>
+  </div>
   <div class="seg"><button id="mOn" onclick="setMode('map')">On MAP</button><button id="mLL" onclick="setMode('ll')">LAT/LONG</button></div>
   <div id="llBox" style="display:none"><div class="sm">Lat / Lon แบบ องศา ลิปดา.ทศนิยม (ไม่ต้องใส่ N/E) เช่น 16 07.01 / 103 46.45</div>
    <div class="row"><input id="fLat" placeholder="16 07.01" inputmode="decimal"><input id="fLon" placeholder="103 46.45" inputmode="decimal"></div></div>
@@ -232,10 +249,6 @@ body{height:100dvh}
    <div><div class="sm">ขอบเครื่องพิมพ์ (มม.)</div><input id="pM" type="number" value="6" min="0" onchange="prUpd()"></div></div>
   <label><input type="checkbox" id="pLb" checked onchange="prUpd()"> พิมพ์เลขแผ่น + scale bar ที่ขอบล่าง (นอกแผนที่)</label>
   <div class="sm" id="pInfo">-</div>
-  <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center"><button id="pvB" style="flex:1 1 140px" onclick="pvToggle()" title="แสดงแผนที่เท่ากระดาษจริงที่มาตราส่วนนี้ ป้าย/กล่อง/ตัวอักษรจะมีขนาดเทียบกับแผนที่เหมือนตอนพิมพ์">📄 มุมมองกระดาษ</button>
-   <button onclick="pvSet(100)" style="width:auto">100%</button></div>
-  <div id="pvBox" style="margin-top:4px"></div>
-  <div class="sm">มุมมองกระดาษ: 100% = ขนาดเท่ากระดาษจริง (ตามมาตรฐานจอ 96 px/นิ้ว) · ล้อเมาส์/ปุ่ม −/+ = ย่อ/ขยาย % · จัดป้าย/กล่องได้ตามที่จะพิมพ์</div>
   <div class="sm">ลากเลขแผ่นสีแดง (✥) บนแผนที่เพื่อขยับส่วนที่จะพิมพ์</div>
   <div class="seg" style="margin:4px 0;display:grid;grid-template-columns:1fr 1fr 1fr"><button id="pmOne" onclick="pmSet(0)">เลื่อนแผ่นเดียว</button><button id="pmAll" onclick="pmSet(1)">เลื่อนทั้งหมด</button><button onclick="S.prOff={};prUpd()" title="คืนตำแหน่งแผ่นทั้งหมด">รีเซ็ต</button></div>
   <div class="b3"><button class="pri" onclick="exportPDF()">Export PDF</button><button onclick="prShow=!prShow;prUpd();if(prShow&&pgGrp.getLayers().length)map.fitBounds(L.featureGroup(pgGrp.getLayers().filter(l=>l.getBounds)).getBounds())" title="แสดง/ซ่อนกรอบแผ่นบนแผนที่">แสดง/ซ่อนกรอบ</button><button onclick="printPages()">Print</button></div>
@@ -256,6 +269,11 @@ const $=id=>document.getElementById(id);
 let S={pts:[]};try{S=JSON.parse(localStorage.getItem('routeS'))||S}catch(e){}
 S.ui=Object.assign({mode:'map',style:'anf',line:'solid',lbl:true,box:true,off:true},S.ui||{});
 const map=L.map('map',{zoomSnap:0.25}).setView([16.12,103.55],11);
+const editLocked=()=>S.ui.editLocked===true;
+function syncLock(){const locked=editLocked(),b=$('editLock'),label=locked?'ปลดล็อกเพื่อแก้ไขบนแผนที่':'ล็อกการแก้ไขบนแผนที่';
+  b.textContent=locked?'🔒':'🔓';b.title=label;b.setAttribute('aria-label',label);b.setAttribute('aria-pressed',String(locked));b.classList.toggle('pri',locked);
+  const el=map.getContainer();el.classList.toggle('edit-locked',locked);el.style.cursor=!locked&&S.ui.mode==='map'?'crosshair':''}
+function setEditLock(v){S.ui.editLocked=!!v;if(v)closeEd();map.closePopup();draw()}
 let base=null;
 // ---- local map files (.pmtiles on the device) ----
 // Chrome/Edge: keep only a file HANDLE in IndexedDB and read the original file in place (no copy, no extra disk space).
@@ -427,7 +445,7 @@ const lkey=(a,b)=>[wkey(a),wkey(b)].sort().join('|'); // leg A-B == leg B-A
 const wkey=p=>(+p.lat).toFixed(4)+','+(+p.lon).toFixed(4); // NAVIGATION: same position = same waypoint, drawn once
 function drawRoutes(g,ro){const ca=(S.ui.route||'main')==='alt';g._cur=new Set(showR(ca)?S.pts.map(wkey):[]);g._curL=new Set(showR(ca)?S.pts.slice(1).map((b,i)=>lkey(S.pts[i],b)):[]);if(showR(!ca))withAlt(()=>render(g,ro,true)); // other route stays draggable on screen
   return render(showR(ca)?g:L.layerGroup(),ro)}
-function draw(){fixTypes();syncEnds();snap();grp.clearLayers();const r=drawRoutes(grp,false);list(r.L_,r.tot,r.tmin);save();prUpd();terrain();withAlt(terrain)}
+function draw(){syncLock();fixTypes();syncEnds();snap();grp.clearLayers();const r=drawRoutes(grp,editLocked());list(r.L_,r.tot,r.tmin);save();prUpd();terrain();withAlt(terrain)}
 // ---- leg ALT from terrain: highest ground along the leg (AWS Terrarium DEM, z12 ~30 m), round up to 100 ft, + 500 ft ----
 const ELV={},ELP={},DEM={};const ekey=(a,b)=>[LA(a),LO(a),LA(b),LO(b)].join(',');
 function autoAlt(a,b){const f=b&&ELV[ekey(a,b)];return f==null?null:String(Math.ceil(f/100)*100+500)}
@@ -483,7 +501,7 @@ function render(g,ro,other){const L_=legs(),n=S.pts.length,anf=S.ui.style==='anf
         else if((mp.x-c.x)*nx+(mp.y-c.y)*ny<0){nx=-nx;ny=-ny} // otherwise on the side away from the route centre
         const psc=a.psc||a.bsc||S.ui.bsc||1,off=16*psc; // psc: this LEG box only
         const gm=[(LA(a)+LA(b))/2,(LO(a)+LO(b))/2],pos=a.poff?[gm[0]+a.poff[0],gm[1]+a.poff[1]]:M.unproject(mp.add(L.point(nx*off,ny*off)),z); // dragged position is kept as an offset from the leg midpoint
-        const pm=L.marker(pos,{draggable:!ro,interactive:!ro,zIndexOffset:2000,icon:L.divIcon({className:'',iconSize:null,iconAnchor:[0,0],
+        const pm=L.marker(pos,{draggable:!ro,interactive:!ro,keyboard:!ro,zIndexOffset:2000,icon:L.divIcon({className:'',iconSize:null,iconAnchor:[0,0],
           html:`<div style="transform:translate(-50%,-50%) rotate(${ang}deg) scale(${psc})"><span class="legt" style="cursor:${ro?'default':'move'}">${esc(txt)}</span></div>`})}).addTo(g);
         if(!ro){pm.on('dragend',e=>{const q=e.target.getLatLng();a.poff=[q.lat-gm[0],q.lng-gm[1]];draw()});pm.on('click',ed(()=>editLeg(i,pos)))}}}
     else L.polyline([[LA(a),LO(a)],[LA(b),LO(b)]],{color:'#000',weight:a.lw||S.ui.lw||3*(S.ui.lwc||1),dashArray:dash}).addTo(g);
@@ -504,7 +522,7 @@ function render(g,ro,other){const L_=legs(),n=S.pts.length,anf=S.ui.style==='anf
     const cells=vals.map((t,k)=>`<div class="c${k===0&&!lt?' f':''}${k===vals.length-1&&rt?' l':''}" style="border-color:${bc}"><span>${esc(t)}</span></div>`).join('');
     const tipLen=Math.max(bo.h?String(hd).length:0,bo.t&&rc?rc.length:0);
     const h=Math.max(44,Math.max(...vals.map(v=>String(v).length))*7.5+12,(bo.h||bo.t)?(tipLen*7.5+12)/0.62:0),sc=a.bsc||S.ui.bsc||1;
-    const bx=L.marker(a.box,{draggable:!ro,interactive:!ro,icon:L.divIcon({className:'',iconSize:null,iconAnchor:[0,0],
+    const bx=L.marker(a.box,{draggable:!ro,interactive:!ro,keyboard:!ro,icon:L.divIcon({className:'',iconSize:null,iconAnchor:[0,0],
       html:`<div style="transform:translate(-50%,-50%) rotate(${flip?l.tc-90:l.tc-270}deg) scale(${sc})"><div class="box" style="--bd:${bc};--h:${h}px">${lt?tipSvg(h,bc,0,flip?rc:hd):''}${cells}${rt?tipSvg(h,bc,1,flip?hd:rc):''}</div></div>`})}).addTo(g);
     if(ro)return;
     bx.on('dragend',e=>{const q=e.target.getLatLng();a.boff=[q.lat-mid[0],q.lng-mid[1]];draw()});
@@ -515,20 +533,20 @@ function render(g,ro,other){const L_=legs(),n=S.pts.length,anf=S.ui.style==='anf
       L.circleMarker([p._la,p._lo],{radius:3,color:'#000',weight:1.5,fillColor:'#fff',fillOpacity:1,interactive:false}).addTo(g)}
     const first=i===0,last=i===n-1,ms=p.msc||S.ui.msc||1,sz=(anf?RING*2:26)*ms;const skipMk=noEnds&&(first||last);
     if(anf){const k=wkey(p);if(seen.has(k)||(other&&g._cur&&g._cur.has(k)))return;seen.add(k)} // duplicate waypoint: ring + W.Pt shown once (current route wins)
-    const mk=skipMk?null:L.marker([p.lat,p.lon],{draggable:!ro,interactive:!ro,zIndexOffset:500,icon:L.divIcon({className:'',html:`<div style="transform:scale(${ms});transform-origin:0 0">${anf?`<div class="ring" style="width:${RING*2}px;height:${RING*2}px"></div>`:shape(p.type)}</div>`,iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]})}).addTo(g);
+    const mk=skipMk?null:L.marker([p.lat,p.lon],{draggable:!ro,interactive:!ro,keyboard:!ro,zIndexOffset:500,icon:L.divIcon({className:'',html:`<div style="transform:scale(${ms});transform-origin:0 0">${anf?`<div class="ring" style="width:${RING*2}px;height:${RING*2}px"></div>`:shape(p.type)}</div>`,iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]})}).addTo(g);
     if(!ro&&mk){mk.bindTooltip(esc(p.type+' '+p.name),{direction:'top',offset:[0,-12]});
     mk.on('dragend',e=>{const q=e.target.getLatLng();p.lat=+q.lat.toFixed(6);p.lon=+q.lng.toFixed(6);draw()})}
     if(!shw('lbl'))return;
     if(!p.loff)p.loff=p.lbl?[p.lbl[0]-p.lat,p.lbl[1]-p.lon]:[0.05,0]; // label follows its point
     p.lbl=[p.lat+p.loff[0],p.lon+p.loff[1]];
-    if(anf){const lb=L.marker(p.lbl,{draggable:!ro,interactive:!ro,icon:L.divIcon({className:'lbl',iconSize:null,iconAnchor:[0,0],
+    if(anf){const lb=L.marker(p.lbl,{draggable:!ro,interactive:!ro,keyboard:!ro,icon:L.divIcon({className:'lbl',iconSize:null,iconAnchor:[0,0],
         html:`<div style="transform:scale(${p.lsc||S.ui.lsc||1});transform-origin:0 0"><span class="wpt">${esc(p.name||lblTxt(p))}</span></div>`})}).addTo(g);
       if(!ro){lb.on('dragend',e=>{const q=e.target.getLatLng();p.loff=[q.lat-p.lat,q.lng-p.lon];draw()});lb.on('click',ed(()=>editLbl(i)))}return}
     const auto=[rName,'NM','MIN','TOTAL',Math.round(tot),hm(tmin),'ACTUAL',first?'-':Math.round(cn),first?'-':hm(cm),'REMAIN',last?'-':Math.round(tot-cn),last?'-':hm(tmin-cm)];
     p._auto=auto;const tv=p.tv||[],cell=k=>esc(has(tv[k])?tv[k]:auto[k]);
     const tbl=p.noTbl?'':`<table style="left:${p.tbx??S.ui.tbx??0}px">${[0,1,2,3].map(r=>`<tr>${[0,1,2].map(c=>`<td>${cell(r*3+c)}</td>`).join('')}</tr>`).join('')}</table>`;
     if(!first&&!last)L.polyline([[p.lat,p.lon],p.lbl],{color:'#000',weight:2}).addTo(g); // no leader line for origin/destination
-    const lb=L.marker(p.lbl,{draggable:!ro,interactive:!ro,icon:L.divIcon({className:'lbl',iconSize:null,iconAnchor:[0,0],
+    const lb=L.marker(p.lbl,{draggable:!ro,interactive:!ro,keyboard:!ro,icon:L.divIcon({className:'lbl',iconSize:null,iconAnchor:[0,0],
       html:`<div style="transform:translate(-50%,-50%) scale(${p.lsc||S.ui.lsc||1})"><div class="t" style="background:${p.lcol||col(p.type)}">${esc(lblTxt(p))}</div>${tbl}</div>`})}).addTo(g);
     if(ro)return;
     lb.on('dragend',e=>{const q=e.target.getLatLng();p.loff=[q.lat-p.lat,q.lng-p.lon];draw()});
@@ -551,7 +569,7 @@ function editLeg(i,ll){const a=S.pts[i];
    <label style="color:#333"><input type="checkbox" id="gAll" style="width:auto"> ใช้ขนาดและ HDG นี้กับทุกกล่อง LEG</label>
    <button class="pri" onclick="if($('gAll').checked){const v=$('gS').value/100,h=S.pts[${i}].ph||S.ui.ph||'b';S.pts.forEach(p=>{p.psc=v;delete p.ph});S.ui.ph=h}closeEd();draw()">บันทึก</button><button onclick="['psc','poff','ph'].forEach(k=>delete S.pts[${i}][k]);closeEd();draw()">คืนค่าเดิม</button>`)}
 function setPh(i,k){S.pts[i].ph=k;['l','r','b'].forEach(x=>$('gH'+x).classList.toggle('on',x===k));draw()}
-function popForm(ll,html){if(isSheet()&&edPrev===null){const b=document.body.classList;edPrev=b.contains('full')?'full':b.contains('hide')?'hide':'';b.remove('full','hide');b.add('editing');togTxt();setTimeout(()=>map.invalidateSize(),50)}const e=$('edp');e.innerHTML=`<div class="pop"><div class="edh">${isSheet()?'':'<span class="grip" title="ลากเพื่อย้ายกล่อง">⠿ ลากย้าย</span>'}<button title="ย้ายไปอีกด้าน" onclick="edPos=null;edPlace();$('edp').classList.toggle('lft')">⇆</button><button title="ปิด" onclick="closeEd()">✕</button></div>${html}</div>`;e.style.width=isSheet()&&!isPh()?$('side').offsetWidth+'px':'';e.style.display='block';edPlace()}
+function popForm(ll,html){if(editLocked())return;if(isSheet()&&edPrev===null){const b=document.body.classList;edPrev=b.contains('full')?'full':b.contains('hide')?'hide':'';b.remove('full','hide');b.add('editing');togTxt();setTimeout(()=>map.invalidateSize(),50)}const e=$('edp');e.innerHTML=`<div class="pop"><div class="edh">${isSheet()?'':'<span class="grip" title="ลากเพื่อย้ายกล่อง">⠿ ลากย้าย</span>'}<button title="ย้ายไปอีกด้าน" onclick="edPos=null;edPlace();$('edp').classList.toggle('lft')">⇆</button><button title="ปิด" onclick="closeEd()">✕</button></div>${html}</div>`;e.style.width=isSheet()&&!isPh()?$('side').offsetWidth+'px':'';e.style.display='block';edPlace()}
 // desktop: drag the editor by its header; position is kept for later opens
 let edPos=null;
 function edPlace(){const e=$('edp');if(!e)return;const on=edPos&&!isSheet();
@@ -693,12 +711,12 @@ function addFromForm(){if(S.ui.mode==='map')return alert('โหมด On MAP: �
   addPt(la,lo);map.panTo([la,lo]);$('fLat').value=$('fLon').value=''}
 function setMode(m){S.ui.mode=m;$('mOn').classList.toggle('on',m==='map');$('mLL').classList.toggle('on',m==='ll');$('llBox').style.display=m==='ll'?'':'none';
   $('modeHint').textContent=m==='map'?'คลิกบนแผนที่เพื่อเพิ่มจุดด้วยค่าในฟอร์มนี้':'กรอกพิกัดแล้วกด Add ROUTE';
-  map.getContainer().style.cursor=m==='map'?'crosshair':'';save()}
+  syncLock();save()}
 function lineSel(){const a=(S.ui.route||'main')==='alt';$('lineSt').value=a?S.ui.lineAlt||'dash':S.ui.line||'solid';$('lineLb').textContent=a?'เส้นทางสำรอง':'เส้นทางหลัก';$('tickSt').value=S.ui.tick||0;$('tkGo').checked=S.ui.tickGo!==false;$('tkBk').checked=!!S.ui.tickBack}
 function setLine(v){if((S.ui.route||'main')==='alt')S.ui.lineAlt=v;else S.ui.line=v;draw()}
 function setStyle(s,user){S.ui.style=s;if(user){S.ui.line='solid';delete S.ui.lineAlt}lineSel();$('sA').classList.toggle('on',s==='anf');$('sC').classList.toggle('on',s==='cp');syncShow();draw()}
 map.on('zoomend',()=>{if(S.ui.style==='anf'||S.ui.tick)draw()});
-map.on('click',e=>{if($('edp').style.display==='block'){closeEd();return}if(S.ui.mode==='map')addPt(e.latlng.lat,e.latlng.lng)});
+map.on('click',e=>{if(editLocked())return;if($('edp').style.display==='block'){closeEd();return}if(S.ui.mode==='map')addPt(e.latlng.lat,e.latlng.lng)});
 // ---- Place search (like AirNavFlow): data from DataBase CoWork (shared with AirNavFlow), offline copy in localStorage ----
 // AP.txt airports, สนามบิน ทบ.txt Army airfields/units/camps, AD.txt freqs (popup), places.json OSM names; else Nominatim online
 const CW=(window.CONFIG&&CONFIG.COWORK_URL)||'https://spidersqdn.github.io/DataBase/CoWork/';
@@ -707,9 +725,11 @@ const apGrp=L.layerGroup(); // independent of route redraws and route SHOW flags
 const apControl=L.control({position:'topright'});
 apControl.onAdd=()=>{const menu=L.DomUtil.create('details','ap-layers');
   menu.innerHTML='<summary title="Layers" aria-label="Layers · ชั้นข้อมูล"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 8l10 5 10-5-10-5Z M2 12l10 5 10-5 M2 16l10 5 10-5"/></svg><span>Layers</span></summary><div class="ap-options"><label><input type="checkbox" id="shAirports" style="width:auto" onchange="setAirports(this.checked)"> AIRPORTS · สนามบิน</label><div class="sm" id="apInfo" role="status" aria-live="polite"></div></div>';
+  menu.querySelector('.ap-options').appendChild($('showOptions'));menu.addEventListener('toggle',fitLayers);
   L.DomEvent.disableClickPropagation(menu);L.DomEvent.disableScrollPropagation(menu);
   menu.addEventListener('keydown',e=>{if(e.key==='Escape'){menu.open=false;menu.querySelector('summary').focus()}});return menu};
-apControl.addTo(map);map.on('click',()=>{apControl.getContainer().open=false});
+apControl.addTo(map);map.on('click',()=>{apControl.getContainer().open=false});map.on('resize',fitLayers);fitLayers();
+function fitLayers(){const menu=apControl.getContainer();menu.querySelector('.ap-options').style.maxHeight=Math.max(0,map.getSize().y-menu.querySelector('summary').offsetHeight-24)+'px'}
 function cwGet(f,json){const k='cw:'+f;
   return fetch(CW+encodeURIComponent(f),{cache:'no-cache'}).then(r=>{if(!r.ok)throw 0;return r.text()}).then(t=>{try{localStorage.setItem(k,t)}catch(e){}return t})
    .catch(()=>{try{return localStorage.getItem(k)}catch(e){return null}}).then(t=>{if(!t)return json?null:[];if(json){try{return JSON.parse(t)}catch(e){return null}}
@@ -774,12 +794,12 @@ function srPopup(p){
   return `<div class="srp"><b>${esc(nm)}</b><div style="color:#555;font-size:12px">${esc(PL_K[p.k]||'')}${p.sub?' · '+esc(p.sub):''}</div>
    <div class="m">${ddm(p.lat)}&nbsp; ${ddm(p.lon)}<br>MGRS ${mgrs(p.lat,p.lon)}${p.el!=null&&p.el!==''?'<br>ELEV '+esc(p.el)+' ft':''}</div>
    ${ad.length?`<div class="m" style="max-height:110px;overflow:auto;color:#333">${ad.slice(0,12).map(esc).join('<br>')}</div>`:''}
-   <button class="pri" onclick="srAdd()">Add ROUTE</button></div>`}
+   <button class="pri" onclick="srAdd()"${editLocked()?' disabled title="ปลดล็อกเพื่อเพิ่มจุด"':''}>Add ROUTE</button></div>`}
 function srShow(p){if(!p)return;$('srR').innerHTML='';const h=srPopup(p);
   if(srMk)map.removeLayer(srMk);
   srMk=L.circleMarker([p.lat,p.lon],{radius:8,color:'#F2B43C',weight:3,fill:false}).addTo(map).bindPopup(h,{maxWidth:280}).on('popupclose',function(){map.removeLayer(this);if(srMk===this)srMk=null});
   map.flyTo([p.lat,p.lon],Math.max(map.getZoom(),11));map.once('moveend',()=>srMk&&srMk.openPopup())}
-function srAdd(){const c=window.srCur;if(!c)return;$('fName').value=c.nm;addPt(c.p.lat,c.p.lon);map.closePopup();if(srMk){map.removeLayer(srMk);srMk=null}}
+function srAdd(){const c=window.srCur;if(!c||editLocked())return;$('fName').value=c.nm;addPt(c.p.lat,c.p.lon);map.closePopup();if(srMk){map.removeLayer(srMk);srMk=null}}
 $('kt').oninput=draw;
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'&&!/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)){e.preventDefault();undo()}});
 // ---- offline cache (service worker) ----
@@ -947,7 +967,7 @@ function prUpd(){if(!$('pS'))return;const {c,pages,nr,nc}=prPages();
   const rcs=[];pages.forEach((p,i)=>{const rc=L.rectangle(p.b,{color:'#d00',weight:2,fill:true,fillOpacity:.04,dashArray:'6 4',interactive:false}).addTo(pgGrp);rcs.push(rc);
     // drag the page number to move what this sheet prints
     const bnd=ll=>{const q=MERC.project(ll);return [MERC.unproject(L.point(q.x-p.W/2,q.y-p.H/2)),MERC.unproject(L.point(q.x+p.W/2,q.y+p.H/2))]};
-    L.marker(p.center,{draggable:true,zIndexOffset:900,icon:L.divIcon({className:'',iconSize:null,html:`<span class="pgn" style="cursor:move" title="ลากเพื่อขยับแผ่นนี้">✥ ${i+1}</span>`})}).addTo(pgGrp)
+    L.marker(p.center,{draggable:!editLocked(),interactive:!editLocked(),keyboard:!editLocked(),zIndexOffset:900,icon:L.divIcon({className:'',iconSize:null,html:`<span class="pgn" style="cursor:${editLocked()?'default':'move'}" title="ลากเพื่อขยับแผ่นนี้">✥ ${i+1}</span>`})}).addTo(pgGrp)
      .on('drag',e=>{const q=MERC.project(e.target.getLatLng()),o=MERC.project(p.center),dx=q.x-o.x,dy=q.y-o.y;
        (S.ui.prAll?pages:[p]).forEach(t=>{const c0=MERC.project(t.center);rcs[pages.indexOf(t)].setBounds(bnd(MERC.unproject(L.point(c0.x+dx,c0.y+dy))))})})
      .on('dragend',e=>{const q=MERC.project(e.target.getLatLng()),o=MERC.project(p.center),dx=q.x-o.x,dy=q.y-o.y,off=S.prOff=S.prOff||{};
@@ -968,7 +988,7 @@ function pvApply(){const v=Math.round(pvPct());if($('pvR')){$('pvR').value=v;if(
 function pvToggle(){pvOn=!pvOn;if(pvOn&&!prShow){prShow=true;prUpd()}pvApply()}
 function pvSet(v){if(!(v>0))return;S.ui.pvp=Math.min(400,Math.max(10,Math.round(v)));save();if(!pvOn)pvOn=true;pvApply()}
 function pvStep(d){const v=pvPct(),L_=[10,25,33,50,67,75,90,100,110,125,150,175,200,250,300,400];pvSet(d>0?(L_.find(x=>x>v)||400):([...L_].reverse().find(x=>x<v)||10))}
-mEl.addEventListener('wheel',e=>{if(!pvOn)return;e.preventDefault();e.stopPropagation();pvSet(pvPct()*(e.deltaY<0?1.1:1/1.1))},{passive:false,capture:true});
+mEl.addEventListener('wheel',e=>{if(!pvOn||apControl.getContainer().contains(e.target))return;e.preventDefault();e.stopPropagation();pvSet(pvPct()*(e.deltaY<0?1.1:1/1.1))},{passive:false,capture:true});
 $('pvBox').innerHTML=pctIn('pvR',pvPct(),'pvSet(+this.value)',{min:10,max:400,step:5,nmin:10,nmax:400});
 // base-map tile source for print: returns {get(z,x,y)->Promise<img src|null>, max}
 function tileSrc(){const u=$('tileUrl').value;
