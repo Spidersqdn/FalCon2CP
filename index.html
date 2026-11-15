@@ -46,8 +46,9 @@ body.hide #side{display:none}
 .ap-layers summary{display:flex;align-items:center;gap:7px;cursor:pointer;list-style:none;padding:8px;min-width:36px;min-height:36px}
 .ap-layers summary::-webkit-details-marker{display:none}.ap-layers summary svg{width:20px;height:20px;flex:none}
 .ap-layers summary span{display:none}.ap-layers[open] summary span{display:inline;font-weight:bold}
-.ap-layers[open]{width:min(280px,calc(100vw - 20px))}.ap-options{padding:0 10px 10px}
-.ap-options label{display:block;color:inherit;font-size:12px}.ap-options .sm{color:#b9c8d6;margin-top:5px}
+.ap-layers[open]{width:min(280px,calc(100vw - 20px))}.ap-options{padding:0 10px 10px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.ap-options label{display:block;color:inherit;font-size:12px;margin:6px 0}.ap-options .sm{color:#b9c8d6;margin-top:5px}
+#showOptions{border-top:1px solid #666d76;margin-top:8px;padding-top:6px}#shHd{font-weight:bold;margin:0 0 5px}
 .leaflet-touch .ap-layers summary{padding:12px;min-width:44px;min-height:44px}
 #prof{padding:10px 14px 12px;border-bottom:1px solid var(--ln)}#prof .ph{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}#prof .ph b{font-size:14px}#prof .ph span{font:11px Consolas,monospace;color:var(--mu)}
 #prG svg{display:block;width:100%;height:auto;background:#2b2e33;border:1px solid var(--ln);border-radius:8px}#prG .e{color:var(--mu);font-size:11px;padding:8px 0}
@@ -175,6 +176,12 @@ body{height:100dvh}
  <div id="hdr"><b><img src="icon.svg" alt="" style="width:22px;height:22px;vertical-align:-4px;margin-right:6px">FalCon2CP</b><small>ROUTE PLANNER · PZ / CP / LZ</small>
   <form id="srch" onsubmit="event.preventDefault();srGo()"><input id="srQ" type="search" placeholder="ICAO เช่น VTBL, VTBS หรือชื่อสถานที่" aria-label="ค้นหาสถานที่" autocomplete="off" oninput="srList()"><button type="submit">ค้นหา</button></form>
   <div id="srR"></div></div>
+ <fieldset id="paperView">
+  <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center"><button id="pvB" style="flex:1 1 140px" onclick="pvToggle()" title="แสดงแผนที่เท่ากระดาษจริงที่มาตราส่วนนี้ ป้าย/กล่อง/ตัวอักษรจะมีขนาดเทียบกับแผนที่เหมือนตอนพิมพ์">📄 มุมมองกระดาษ</button>
+   <button onclick="pvSet(100)" style="width:auto">100%</button></div>
+  <div id="pvBox" style="margin-top:4px"></div>
+  <div class="sm">มุมมองกระดาษ: 100% = ขนาดเท่ากระดาษจริง (ตามมาตรฐานจอ 96 px/นิ้ว) · ล้อเมาส์/ปุ่ม −/+ = ย่อ/ขยาย % · จัดป้าย/กล่องได้ตามที่จะพิมพ์</div>
+ </fieldset>
  <div id="stats"><div>Distance<b id="stD">-</b></div><div>Flight Time<b id="stT">-</b></div><div>Waypoints<b id="stN">-</b></div><div>GS (KTS)<b><input id="kt" type="number" min="1" value="120" title="Ground speed"></b></div></div>
  <div id="prof"><div class="ph"><b>Elevation Profile</b><span id="prM"></span></div><div id="prG"></div></div>
  <fieldset><legend>MAP</legend>
@@ -196,9 +203,15 @@ body{height:100dvh}
  </fieldset>
  <fieldset><legend>FLIGHT ROUTE Waypoint</legend>
   <div class="seg" id="rSeg"><button id="rMain" onclick="setRoute('main')">เส้นทางหลัก</button><button id="rSw" onclick="swapRoutes()" title="สลับเส้นทางหลัก ↔ สำรอง" style="flex:0 0 38px">⇄</button><button id="rAlt" onclick="setRoute('alt')">เส้นทางสำรอง</button><button id="rDel" onclick="delAlt()" title="ลบเส้นทางสำรอง" style="flex:0 0 38px">✕</button></div>
-  <div class="sm" id="shHd" style="margin:-2px 0 4px"></div>
-  <div class="row" style="margin:0 0 8px;gap:8px 12px;flex-wrap:wrap"><label style="flex:none"><input type="checkbox" id="shMain" onchange="setSh('main',this.checked)" style="width:auto"> SHOW เส้นทางหลัก</label><label style="flex:none"><input type="checkbox" id="shAlt" onchange="setSh('alt',this.checked)" style="width:auto"> SHOW เส้นทางสำรอง</label></div>
-  <div class="row" style="margin:-4px 0 8px;gap:8px 12px;flex-wrap:wrap"><label style="flex:none"><input type="checkbox" id="shLbl" checked onchange="setSh('lbl',this.checked)" style="width:auto"> <span id="shLblT">SHOW PZ CPs LZ</span></label><label style="flex:none"><input type="checkbox" id="shBox" checked onchange="setSh('box',this.checked)" style="width:auto"> SHOW DOG LEGs</label><label style="flex:none" id="shRnmL"><input type="checkbox" id="shRnm" checked onchange="setSh('rnm',this.checked)" style="width:auto"> SHOW คำแสดง หลัก/สำรอง ในตาราง (มุมซ้ายบน)</label><label style="flex:none" id="shPillL"><input type="checkbox" id="shPill" checked onchange="setSh('pill',this.checked)" style="width:auto"> SHOW LEG</label></div>
+  <div id="showOptions">
+   <div class="sm" id="shHd"></div>
+   <label><input type="checkbox" id="shMain" onchange="setSh('main',this.checked)" style="width:auto"> SHOW เส้นทางหลัก</label>
+   <label><input type="checkbox" id="shAlt" onchange="setSh('alt',this.checked)" style="width:auto"> SHOW เส้นทางสำรอง</label>
+   <label><input type="checkbox" id="shLbl" checked onchange="setSh('lbl',this.checked)" style="width:auto"> <span id="shLblT">SHOW PZ CPs LZ</span></label>
+   <label><input type="checkbox" id="shBox" checked onchange="setSh('box',this.checked)" style="width:auto"> SHOW DOG LEGs</label>
+   <label id="shRnmL"><input type="checkbox" id="shRnm" checked onchange="setSh('rnm',this.checked)" style="width:auto"> SHOW คำแสดง หลัก/สำรอง ในตาราง (มุมซ้ายบน)</label>
+   <label id="shPillL"><input type="checkbox" id="shPill" checked onchange="setSh('pill',this.checked)" style="width:auto"> SHOW LEG</label>
+  </div>
   <div class="seg"><button id="mOn" onclick="setMode('map')">On MAP</button><button id="mLL" onclick="setMode('ll')">LAT/LONG</button></div>
   <div id="llBox" style="display:none"><div class="sm">Lat / Lon แบบ องศา ลิปดา.ทศนิยม (ไม่ต้องใส่ N/E) เช่น 16 07.01 / 103 46.45</div>
    <div class="row"><input id="fLat" placeholder="16 07.01" inputmode="decimal"><input id="fLon" placeholder="103 46.45" inputmode="decimal"></div></div>
@@ -232,10 +245,6 @@ body{height:100dvh}
    <div><div class="sm">ขอบเครื่องพิมพ์ (มม.)</div><input id="pM" type="number" value="6" min="0" onchange="prUpd()"></div></div>
   <label><input type="checkbox" id="pLb" checked onchange="prUpd()"> พิมพ์เลขแผ่น + scale bar ที่ขอบล่าง (นอกแผนที่)</label>
   <div class="sm" id="pInfo">-</div>
-  <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center"><button id="pvB" style="flex:1 1 140px" onclick="pvToggle()" title="แสดงแผนที่เท่ากระดาษจริงที่มาตราส่วนนี้ ป้าย/กล่อง/ตัวอักษรจะมีขนาดเทียบกับแผนที่เหมือนตอนพิมพ์">📄 มุมมองกระดาษ</button>
-   <button onclick="pvSet(100)" style="width:auto">100%</button></div>
-  <div id="pvBox" style="margin-top:4px"></div>
-  <div class="sm">มุมมองกระดาษ: 100% = ขนาดเท่ากระดาษจริง (ตามมาตรฐานจอ 96 px/นิ้ว) · ล้อเมาส์/ปุ่ม −/+ = ย่อ/ขยาย % · จัดป้าย/กล่องได้ตามที่จะพิมพ์</div>
   <div class="sm">ลากเลขแผ่นสีแดง (✥) บนแผนที่เพื่อขยับส่วนที่จะพิมพ์</div>
   <div class="seg" style="margin:4px 0;display:grid;grid-template-columns:1fr 1fr 1fr"><button id="pmOne" onclick="pmSet(0)">เลื่อนแผ่นเดียว</button><button id="pmAll" onclick="pmSet(1)">เลื่อนทั้งหมด</button><button onclick="S.prOff={};prUpd()" title="คืนตำแหน่งแผ่นทั้งหมด">รีเซ็ต</button></div>
   <div class="b3"><button class="pri" onclick="exportPDF()">Export PDF</button><button onclick="prShow=!prShow;prUpd();if(prShow&&pgGrp.getLayers().length)map.fitBounds(L.featureGroup(pgGrp.getLayers().filter(l=>l.getBounds)).getBounds())" title="แสดง/ซ่อนกรอบแผ่นบนแผนที่">แสดง/ซ่อนกรอบ</button><button onclick="printPages()">Print</button></div>
@@ -707,9 +716,11 @@ const apGrp=L.layerGroup(); // independent of route redraws and route SHOW flags
 const apControl=L.control({position:'topright'});
 apControl.onAdd=()=>{const menu=L.DomUtil.create('details','ap-layers');
   menu.innerHTML='<summary title="Layers" aria-label="Layers · ชั้นข้อมูล"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 8l10 5 10-5-10-5Z M2 12l10 5 10-5 M2 16l10 5 10-5"/></svg><span>Layers</span></summary><div class="ap-options"><label><input type="checkbox" id="shAirports" style="width:auto" onchange="setAirports(this.checked)"> AIRPORTS · สนามบิน</label><div class="sm" id="apInfo" role="status" aria-live="polite"></div></div>';
+  menu.querySelector('.ap-options').appendChild($('showOptions'));menu.addEventListener('toggle',fitLayers);
   L.DomEvent.disableClickPropagation(menu);L.DomEvent.disableScrollPropagation(menu);
   menu.addEventListener('keydown',e=>{if(e.key==='Escape'){menu.open=false;menu.querySelector('summary').focus()}});return menu};
-apControl.addTo(map);map.on('click',()=>{apControl.getContainer().open=false});
+apControl.addTo(map);map.on('click',()=>{apControl.getContainer().open=false});map.on('resize',fitLayers);fitLayers();
+function fitLayers(){const menu=apControl.getContainer();menu.querySelector('.ap-options').style.maxHeight=Math.max(0,map.getSize().y-menu.querySelector('summary').offsetHeight-24)+'px'}
 function cwGet(f,json){const k='cw:'+f;
   return fetch(CW+encodeURIComponent(f),{cache:'no-cache'}).then(r=>{if(!r.ok)throw 0;return r.text()}).then(t=>{try{localStorage.setItem(k,t)}catch(e){}return t})
    .catch(()=>{try{return localStorage.getItem(k)}catch(e){return null}}).then(t=>{if(!t)return json?null:[];if(json){try{return JSON.parse(t)}catch(e){return null}}
@@ -968,7 +979,7 @@ function pvApply(){const v=Math.round(pvPct());if($('pvR')){$('pvR').value=v;if(
 function pvToggle(){pvOn=!pvOn;if(pvOn&&!prShow){prShow=true;prUpd()}pvApply()}
 function pvSet(v){if(!(v>0))return;S.ui.pvp=Math.min(400,Math.max(10,Math.round(v)));save();if(!pvOn)pvOn=true;pvApply()}
 function pvStep(d){const v=pvPct(),L_=[10,25,33,50,67,75,90,100,110,125,150,175,200,250,300,400];pvSet(d>0?(L_.find(x=>x>v)||400):([...L_].reverse().find(x=>x<v)||10))}
-mEl.addEventListener('wheel',e=>{if(!pvOn)return;e.preventDefault();e.stopPropagation();pvSet(pvPct()*(e.deltaY<0?1.1:1/1.1))},{passive:false,capture:true});
+mEl.addEventListener('wheel',e=>{if(!pvOn||apControl.getContainer().contains(e.target))return;e.preventDefault();e.stopPropagation();pvSet(pvPct()*(e.deltaY<0?1.1:1/1.1))},{passive:false,capture:true});
 $('pvBox').innerHTML=pctIn('pvR',pvPct(),'pvSet(+this.value)',{min:10,max:400,step:5,nmin:10,nmax:400});
 // base-map tile source for print: returns {get(z,x,y)->Promise<img src|null>, max}
 function tileSrc(){const u=$('tileUrl').value;

@@ -1,6 +1,6 @@
 # FalCon2CP – Project Summary (for AI agents / new contributors)
 
-Last updated: 2026-11-15 (map Layers menu). Owner: SPD (`Spidersqdn`). Owner writes Thai; reply concise, copy-paste ready.
+Last updated: 2026-11-15 (SHOW in Layers; paper view at top). Owner: SPD (`Spidersqdn`). Owner writes Thai; reply concise, copy-paste ready.
 
 ## 1. Purpose
 Web app for helicopter mission route maps on FalconView (CADRG/RPF) charts, styled like **AirNavFlow**
@@ -69,6 +69,8 @@ README.md             user guide (Thai)
   (AP.txt + airfields in สนามบิน ทบ.txt; excludes units/camps/OSM).
   Tap an icon for coordinates, available elevation/frequencies and Add ROUTE. Separate from route SHOW flags.
 - `apControl`: Leaflet control with native details/summary, inline SVG icon, touch/keyboard support, map-click/Escape collapse.
+  Contains AIRPORTS and `showOptions` (existing SHOW inputs moved from sidebar). `fitLayers` caps scroll height to the map.
+  SHOW keeps existing `S.ui.sh` values per style; paper view toggle/% controls are first in sidebar, below the search header.
 - Coordinates in DDM and MGRS. Base maps: PMTiles charts, OSM, satellite (Esri).
 - Export PDF / Print: preview dialog, true scale (1:50k–1:1M), A4/A3, draggable sheets, overlap ticks, paper view %.
 - SLIDE: 16:9 Mission Overview PNG (map rendered in cp style + table template).
