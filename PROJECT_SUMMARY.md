@@ -1,6 +1,6 @@
 # FalCon2CP – Project Summary (for AI agents / new contributors)
 
-Last updated: 2026-11-15 (airport overlay). Owner: SPD (`Spidersqdn`). Owner writes Thai; reply concise, copy-paste ready.
+Last updated: 2026-11-15 (map Layers menu). Owner: SPD (`Spidersqdn`). Owner writes Thai; reply concise, copy-paste ready.
 
 ## 1. Purpose
 Web app for helicopter mission route maps on FalconView (CADRG/RPF) charts, styled like **AirNavFlow**
@@ -50,7 +50,7 @@ README.md             user guide (Thai)
   `msc` (symbol size), per-leg overrides `ov.alt`, `ov` time, `boff` (leg box offset), `lw` (line width), `poff`/`psc`/`ph` (NAVIGATION box).
 - `S.ui`: `mode`, `style` (`anf` = NAVIGATION, `cp` = แผนที่แผนสมบูรณ์), `line`/`lineAlt`, sizes `msc/bsc/lsc/lwc/tbx`,
   `sh` (SHOW flags per style), `showMain/showAlt`, `ph`.
-- `S.ui.airports`: MAP > AIRPORTS visibility, shared by both styles and PDF / Print / SLIDE; defaults off for old saves.
+- `S.ui.airports`: top-right Layers > AIRPORTS visibility, shared by both styles and PDF / Print / SLIDE; defaults off for old saves.
 - Before renaming a field, grep all uses; old saved data must still load (migrate, don't break).
 
 ## 4. Features (done)
@@ -65,8 +65,10 @@ README.md             user guide (Thai)
   **แผนที่แผนสมบูรณ์** (CP plan look: PZ pink circle, CP green square, LZ yellow circle, leg boxes with triangles).
 - Draggable labels, leg boxes, tables; tic marks with distance numbers (outbound black, return blue).
 - Elevation profile + stats header; place search (airports + OSM names, Nominatim fallback).
-- MAP > AIRPORTS: optional airport overlay (AP.txt + airfields in สนามบิน ทบ.txt; excludes units/camps/OSM).
+- Layers (top-right map menu, AirNavFlow colors) > AIRPORTS: optional airport overlay
+  (AP.txt + airfields in สนามบิน ทบ.txt; excludes units/camps/OSM).
   Tap an icon for coordinates, available elevation/frequencies and Add ROUTE. Separate from route SHOW flags.
+- `apControl`: Leaflet control with native details/summary, inline SVG icon, touch/keyboard support, map-click/Escape collapse.
 - Coordinates in DDM and MGRS. Base maps: PMTiles charts, OSM, satellite (Esri).
 - Export PDF / Print: preview dialog, true scale (1:50k–1:1M), A4/A3, draggable sheets, overlap ticks, paper view %.
 - SLIDE: 16:9 Mission Overview PNG (map rendered in cp style + table template).

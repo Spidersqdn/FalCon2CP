@@ -42,6 +42,13 @@ body.hide #side{display:none}
 #srR{margin-top:4px;max-height:220px;overflow:auto}#srR div{padding:6px 4px;border-bottom:1px dotted var(--ln);cursor:pointer;font-size:13px}#srR div:hover{background:#3a3d42}#srR b{color:var(--au);font-family:Consolas,monospace;margin-right:6px}#srR small{display:block;color:var(--mu);font-size:11px}
 .srp b{font-size:14px}.srp .m{font:12px Consolas,monospace;margin:4px 0}.srp button{width:100%;margin-top:6px}
 .ap-icon{background:none;border:0}.ap-icon svg{display:block;width:28px;height:28px}
+.ap-layers{background:#112233;color:#f1f3f5;border:1px solid #666d76;border-radius:5px;box-shadow:0 1px 5px #0006}
+.ap-layers summary{display:flex;align-items:center;gap:7px;cursor:pointer;list-style:none;padding:8px;min-width:36px;min-height:36px}
+.ap-layers summary::-webkit-details-marker{display:none}.ap-layers summary svg{width:20px;height:20px;flex:none}
+.ap-layers summary span{display:none}.ap-layers[open] summary span{display:inline;font-weight:bold}
+.ap-layers[open]{width:min(280px,calc(100vw - 20px))}.ap-options{padding:0 10px 10px}
+.ap-options label{display:block;color:inherit;font-size:12px}.ap-options .sm{color:#b9c8d6;margin-top:5px}
+.leaflet-touch .ap-layers summary{padding:12px;min-width:44px;min-height:44px}
 #prof{padding:10px 14px 12px;border-bottom:1px solid var(--ln)}#prof .ph{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}#prof .ph b{font-size:14px}#prof .ph span{font:11px Consolas,monospace;color:var(--mu)}
 #prG svg{display:block;width:100%;height:auto;background:#2b2e33;border:1px solid var(--ln);border-radius:8px}#prG .e{color:var(--mu);font-size:11px;padding:8px 0}
 #stats #kt{width:110px;font:bold 22px Consolas,monospace;padding:1px 6px;margin:0}
@@ -172,8 +179,6 @@ body{height:100dvh}
  <div id="prof"><div class="ph"><b>Elevation Profile</b><span id="prM"></span></div><div id="prG"></div></div>
  <fieldset><legend>MAP</legend>
   <select id="mapSel" style="width:100%" onchange="pickMap(this.value)"></select>
-  <label style="display:block;margin:8px 0"><input type="checkbox" id="shAirports" onchange="setAirports(this.checked)"> AIRPORTS · สนามบิน</label>
-  <div class="sm" id="apInfo" role="status" aria-live="polite"></div>
   <label><input type="checkbox" id="offl" checked onchange="save()"> เก็บแผนที่ที่เปิดดูไว้ใช้ offline</label>
   <div class="row" style="gap:6px;margin:4px 0"><button class="pri" onclick="lmPick()">📁 IMPORT MAP</button><button id="lmDel" onclick="lmDel()" style="display:none;flex:0 0 auto" title="ลบแผนที่นี้ออกจากเครื่อง">ลบ</button></div>
   <input type="file" id="lmIn" accept=".pmtiles" multiple style="display:none" onchange="lmAdd(this.files);this.value=''">
@@ -699,6 +704,12 @@ map.on('click',e=>{if($('edp').style.display==='block'){closeEd();return}if(S.ui
 const CW=(window.CONFIG&&CONFIG.COWORK_URL)||'https://spidersqdn.github.io/DataBase/CoWork/';
 let PL=null,AP=null,AD=null,srMk=null,apPending=null,plPending=null;
 const apGrp=L.layerGroup(); // independent of route redraws and route SHOW flags
+const apControl=L.control({position:'topright'});
+apControl.onAdd=()=>{const menu=L.DomUtil.create('details','ap-layers');
+  menu.innerHTML='<summary title="Layers" aria-label="Layers · ชั้นข้อมูล"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 8l10 5 10-5-10-5Z M2 12l10 5 10-5 M2 16l10 5 10-5"/></svg><span>Layers</span></summary><div class="ap-options"><label><input type="checkbox" id="shAirports" style="width:auto" onchange="setAirports(this.checked)"> AIRPORTS · สนามบิน</label><div class="sm" id="apInfo" role="status" aria-live="polite"></div></div>';
+  L.DomEvent.disableClickPropagation(menu);L.DomEvent.disableScrollPropagation(menu);
+  menu.addEventListener('keydown',e=>{if(e.key==='Escape'){menu.open=false;menu.querySelector('summary').focus()}});return menu};
+apControl.addTo(map);map.on('click',()=>{apControl.getContainer().open=false});
 function cwGet(f,json){const k='cw:'+f;
   return fetch(CW+encodeURIComponent(f),{cache:'no-cache'}).then(r=>{if(!r.ok)throw 0;return r.text()}).then(t=>{try{localStorage.setItem(k,t)}catch(e){}return t})
    .catch(()=>{try{return localStorage.getItem(k)}catch(e){return null}}).then(t=>{if(!t)return json?null:[];if(json){try{return JSON.parse(t)}catch(e){return null}}
