@@ -1,6 +1,6 @@
 # FalCon2CP – Project Summary (for AI agents / new contributors)
 
-Last updated: 2026-11-15 (SHOW in Layers; paper view at top). Owner: SPD (`Spidersqdn`). Owner writes Thai; reply concise, copy-paste ready.
+Last updated: 2026-11-15 (display controls and map edit lock). Owner: SPD (`Spidersqdn`). Owner writes Thai; reply concise, copy-paste ready.
 
 ## 1. Purpose
 Web app for helicopter mission route maps on FalconView (CADRG/RPF) charts, styled like **AirNavFlow**
@@ -51,6 +51,7 @@ README.md             user guide (Thai)
 - `S.ui`: `mode`, `style` (`anf` = NAVIGATION, `cp` = แผนที่แผนสมบูรณ์), `line`/`lineAlt`, sizes `msc/bsc/lsc/lwc/tbx`,
   `sh` (SHOW flags per style), `showMain/showAlt`, `ph`.
 - `S.ui.airports`: top-right Layers > AIRPORTS visibility, shared by both styles and PDF / Print / SLIDE; defaults off for old saves.
+- `S.ui.editLocked`: optional map edit lock; defaults unlocked for old saves. `setEditLock`/`syncLock` update the button next to paper-view % and redraw the screen read-only.
 - Before renaming a field, grep all uses; old saved data must still load (migrate, don't break).
 
 ## 4. Features (done)
@@ -71,6 +72,8 @@ README.md             user guide (Thai)
 - `apControl`: Leaflet control with native details/summary, inline SVG icon, touch/keyboard support, map-click/Escape collapse.
   Contains AIRPORTS and `showOptions` (existing SHOW inputs moved from sidebar). `fitLayers` caps scroll height to the map.
   SHOW keeps existing `S.ui.sh` values per style; paper view toggle/% controls are first in sidebar, below the search header.
+- 🔓/🔒 beside paper-view % locks map editing (points, labels, LEG/DOG LEG boxes, tables and print-sheet handles).
+  Map panning and zoom remain available; map-click point creation and popup Add ROUTE are blocked until unlocked. Lock state persists.
 - Coordinates in DDM and MGRS. Base maps: PMTiles charts, OSM, satellite (Esri).
 - Export PDF / Print: preview dialog, true scale (1:50k–1:1M), A4/A3, draggable sheets, overlap ticks, paper view %.
 - SLIDE: 16:9 Mission Overview PNG (map rendered in cp style + table template).
