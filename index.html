@@ -115,6 +115,10 @@ fieldset>*:not(legend){clear:both}
 #editLock{flex:none;min-width:40px;min-height:36px;padding:4px;font-size:18px}
 .leaflet-touch #editLock{min-width:44px;min-height:44px}
 #map.edit-locked .lbl{pointer-events:none}
+#map.paper-view{touch-action:none}
+#map.paper-view .leaflet-top,#map.paper-view .leaflet-bottom{transform:scale(var(--pv-ui,1));transform-origin:top left}
+#map.paper-view .leaflet-bottom{transform-origin:bottom left}#map.paper-view .leaflet-right{transform-origin:top right}
+#map.paper-view .leaflet-bottom.leaflet-right{transform-origin:bottom right}
 .mk{width:24px;height:24px;border-radius:50%;background:#000;border:2px solid #fff;color:#fff;font:bold 13px var(--mf);display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px #0008}
 .ring{border-radius:50%;border:3px solid #000;background:transparent;box-sizing:border-box}
 .legt{background:#fff;color:#000;border:1.5px solid #000;font:bold 12px var(--mf);padding:1px 6px;white-space:nowrap;display:inline-block}
@@ -130,6 +134,10 @@ fieldset>*:not(legend){clear:both}
 /* ---- responsive: tablet / phone / touch ---- */
 body{height:100dvh}
 #map{min-width:0;min-height:0}fieldset{min-width:0}.row>div>input,.row>div>select{width:100%}
+/* Keep menu gestures from zooming the page; Leaflet still handles map gestures. */
+@media (any-pointer:coarse){
+ #side,#edp,.ap-layers,#tog,.leaflet-popup,#sld .shd,#sld .sfm,#sld .sbt,#pvw .phd,#pvw .pbt{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+}
 @media (pointer:coarse){
  button{min-height:38px;padding:8px 12px}.seg button,.b3 button{min-height:42px}
  input:not([type=checkbox]):not([type=range]),select{font-size:16px;padding:8px 9px;min-height:40px}
@@ -266,6 +274,9 @@ body{height:100dvh}
 const COL={PZ:'#FF66CC',CP:'#22BB33',LZ:'#FFD700'};
 const OSM='https://tile.openstreetmap.org/{z}/{x}/{y}.png',SAT='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'; // SAT: Esri World Imagery
 const $=id=>document.getElementById(id);
+const menuTouchTarget=t=>t instanceof Element&&t.closest('#side,#edp,.ap-layers,#tog,.leaflet-popup,#sld .shd,#sld .sfm,#sld .sbt,#pvw .phd,#pvw .pbt');
+// Safari gesture events complement touch-action without cancelling menu taps or scrolling.
+for(const type of ['gesturestart','gesturechange'])document.addEventListener(type,e=>{if((navigator.maxTouchPoints>0||matchMedia('(any-pointer:coarse)').matches)&&(menuTouchTarget(e.target)||(pvOn&&map.getContainer().contains(e.target))))e.preventDefault()},{passive:false,capture:true});
 let S={pts:[]};try{S=JSON.parse(localStorage.getItem('routeS'))||S}catch(e){}
 S.ui=Object.assign({mode:'map',style:'anf',line:'solid',lbl:true,box:true,off:true},S.ui||{});
 const map=L.map('map',{zoomSnap:0.25}).setView([16.12,103.55],11);
@@ -716,7 +727,7 @@ function lineSel(){const a=(S.ui.route||'main')==='alt';$('lineSt').value=a?S.ui
 function setLine(v){if((S.ui.route||'main')==='alt')S.ui.lineAlt=v;else S.ui.line=v;draw()}
 function setStyle(s,user){S.ui.style=s;if(user){S.ui.line='solid';delete S.ui.lineAlt}lineSel();$('sA').classList.toggle('on',s==='anf');$('sC').classList.toggle('on',s==='cp');syncShow();draw()}
 map.on('zoomend',()=>{if(S.ui.style==='anf'||S.ui.tick)draw()});
-map.on('click',e=>{if(editLocked())return;if($('edp').style.display==='block'){closeEd();return}if(S.ui.mode==='map')addPt(e.latlng.lat,e.latlng.lng)});
+map.on('click',e=>{if(editLocked()||pvPinch||Date.now()<pvPinchUntil)return;if($('edp').style.display==='block'){closeEd();return}if(S.ui.mode==='map')addPt(e.latlng.lat,e.latlng.lng)});
 // ---- Place search (like AirNavFlow): data from DataBase CoWork (shared with AirNavFlow), offline copy in localStorage ----
 // AP.txt airports, สนามบิน ทบ.txt Army airfields/units/camps, AD.txt freqs (popup), places.json OSM names; else Nominatim online
 const CW=(window.CONFIG&&CONFIG.COWORK_URL)||'https://spidersqdn.github.io/DataBase/CoWork/';
@@ -729,7 +740,7 @@ apControl.onAdd=()=>{const menu=L.DomUtil.create('details','ap-layers');
   L.DomEvent.disableClickPropagation(menu);L.DomEvent.disableScrollPropagation(menu);
   menu.addEventListener('keydown',e=>{if(e.key==='Escape'){menu.open=false;menu.querySelector('summary').focus()}});return menu};
 apControl.addTo(map);map.on('click',()=>{apControl.getContainer().open=false});map.on('resize',fitLayers);fitLayers();
-function fitLayers(){const menu=apControl.getContainer();menu.querySelector('.ap-options').style.maxHeight=Math.max(0,map.getSize().y-menu.querySelector('summary').offsetHeight-24)+'px'}
+function fitLayers(){const menu=apControl.getContainer();menu.querySelector('.ap-options').style.maxHeight=Math.max(0,map.getContainer().getBoundingClientRect().height-menu.querySelector('summary').getBoundingClientRect().height-24)+'px'}
 function cwGet(f,json){const k='cw:'+f;
   return fetch(CW+encodeURIComponent(f),{cache:'no-cache'}).then(r=>{if(!r.ok)throw 0;return r.text()}).then(t=>{try{localStorage.setItem(k,t)}catch(e){}return t})
    .catch(()=>{try{return localStorage.getItem(k)}catch(e){return null}}).then(t=>{if(!t)return json?null:[];if(json){try{return JSON.parse(t)}catch(e){return null}}
@@ -975,20 +986,41 @@ function prUpd(){if(!$('pS'))return;const {c,pages,nr,nc}=prPages();
 function pmSet(a){S.ui.prAll=!!a;$('pmOne').classList.toggle('on',!a);$('pmAll').classList.toggle('on',!!a);save()}
 // ---- PAPER VIEW: map shown at the print zoom (true paper proportions), scaled on screen by pct ----
 let pvOn=false;const pvInv=map.invalidateSize.bind(map),mEl=$('map');
+let pvPinch=null,pvPinchFrame=0,pvPinchUntil=0;
 const pvPct=()=>Math.min(400,Math.max(10,+S.ui.pvp||100));
 function pvLayout(){const st=mEl.style;['width','height','flex','marginRight','marginBottom','transform','transformOrigin'].forEach(k=>st[k]='');if(!pvOn)return;
   const k=pvPct()/100,w=mEl.offsetWidth,h=mEl.offsetHeight;
   Object.assign(st,{flex:'none',width:w/k+'px',height:h/k+'px',marginRight:(w-w/k)+'px',marginBottom:(h-h/k)+'px',transform:`scale(${k})`,transformOrigin:'0 0'})}
 map.invalidateSize=function(o){pvLayout();return pvInv(o)};
-function pvApply(){const v=Math.round(pvPct());if($('pvR')){$('pvR').value=v;if(document.activeElement!==$('pvRn'))$('pvRn').value=v}$('pvB').classList.toggle('pri',pvOn);
+function pvApply(){if(!pvOn)pvEndPinch();mEl.style.setProperty('--pv-ui',String(pvOn?100/pvPct():1));mEl.classList.toggle('paper-view',pvOn);const v=Math.round(pvPct());if($('pvR')){$('pvR').value=v;if(pvPinch||document.activeElement!==$('pvRn'))$('pvRn').value=v}$('pvB').classList.toggle('pri',pvOn);
   const H=['scrollWheelZoom','doubleClickZoom','touchZoom','boxZoom'],c=map.getCenter(),zc=document.querySelector('.leaflet-control-zoom');
   if(zc)zc.style.display=pvOn?'none':'';H.forEach(n=>map[n]&&map[n][pvOn?'disable':'enable']());
   map.options.zoomSnap=pvOn?0:0.25;map.invalidateSize({pan:false});
   if(pvOn)map.setView(c,zoomFor(c.lat,prCfg().S),{animate:false});else map.setView(c,Math.round(map.getZoom()*4)/4,{animate:false})}
 function pvToggle(){pvOn=!pvOn;if(pvOn&&!prShow){prShow=true;prUpd()}pvApply()}
-function pvSet(v){if(!(v>0))return;S.ui.pvp=Math.min(400,Math.max(10,Math.round(v)));save();if(!pvOn)pvOn=true;pvApply()}
+function pvSet(v,persist=true){if(!(v>0))return;S.ui.pvp=Math.min(400,Math.max(10,Math.round(v)));if(persist)save();if(!pvOn)pvOn=true;pvApply()}
 function pvStep(d){const v=pvPct(),L_=[10,25,33,50,67,75,90,100,110,125,150,175,200,250,300,400];pvSet(d>0?(L_.find(x=>x>v)||400):([...L_].reverse().find(x=>x<v)||10))}
 mEl.addEventListener('wheel',e=>{if(!pvOn||apControl.getContainer().contains(e.target))return;e.preventDefault();e.stopPropagation();pvSet(pvPct()*(e.deltaY<0?1.1:1/1.1))},{passive:false,capture:true});
+// Paper pinch scales the paper percentage, leaving the print scale unchanged.
+function pvPinchSample(a,b){return {distance:Math.hypot(b.clientX-a.clientX,b.clientY-a.clientY),clientX:(a.clientX+b.clientX)/2,clientY:(a.clientY+b.clientY)/2}}
+function pvPinchUpdate(){pvPinchFrame=0;const g=pvPinch;if(!g||!pvOn)return;
+  pvSet(Math.max(10,g.pct*g.latest.distance/g.distance),false);
+  const from=map.latLngToContainerPoint(g.anchor),to=map.mouseEventToContainerPoint(g.latest);map.panBy(from.subtract(to),{animate:false})}
+function pvEndPinch(){if(!pvPinch)return;if(pvPinchFrame){cancelAnimationFrame(pvPinchFrame);pvPinchFrame=0;pvPinchUpdate()}
+  const drag=pvPinch.drag;pvPinch=null;pvPinchUntil=Date.now()+350;if(drag)map.dragging.enable();save()}
+mEl.addEventListener('touchstart',e=>{if(!pvOn)return;if(pvPinch){e.preventDefault();e.stopPropagation();return}
+  const t=[...e.touches];if(t.length!==2||t.some(p=>!mEl.contains(p.target)||menuTouchTarget(p.target)||p.target.closest('.leaflet-control')))return;
+  const q=pvPinchSample(t[0],t[1]);if(!q.distance)return;e.preventDefault();e.stopPropagation();map.stop();
+  L.Draggable._dragging?.finishDrag?.(true); // release a marker drag started by the first finger
+  pvPinch={ids:t.map(p=>p.identifier),pct:pvPct(),distance:q.distance,latest:q,anchor:map.mouseEventToLatLng(q),drag:map.dragging.enabled()};map.dragging.disable()
+},{passive:false,capture:true});
+mEl.addEventListener('touchmove',e=>{if(!pvPinch)return;e.preventDefault();e.stopPropagation();if(pvPinch.ending)return;const t=pvPinch.ids.map(id=>[...e.touches].find(p=>p.identifier===id));
+  if(t.some(p=>!p)){pvEndPinch();return}pvPinch.latest=pvPinchSample(t[0],t[1]);if(!pvPinchFrame)pvPinchFrame=requestAnimationFrame(pvPinchUpdate)
+},{passive:false,capture:true});
+for(const type of ['touchend','touchcancel'])mEl.addEventListener(type,e=>{if(!pvPinch)return;e.preventDefault();e.stopPropagation();
+  if(type==='touchcancel'||!e.touches.length){pvEndPinch();return}
+  if(!pvPinch.ids.every(id=>[...e.touches].some(p=>p.identifier===id))){if(pvPinchFrame){cancelAnimationFrame(pvPinchFrame);pvPinchFrame=0;pvPinchUpdate()}pvPinch.ending=true}
+},{passive:false,capture:true});
 $('pvBox').innerHTML=pctIn('pvR',pvPct(),'pvSet(+this.value)',{min:10,max:400,step:5,nmin:10,nmax:400});
 // base-map tile source for print: returns {get(z,x,y)->Promise<img src|null>, max}
 function tileSrc(){const u=$('tileUrl').value;
