@@ -42,13 +42,18 @@
 - บนมือถือ เมนูไม่ซูมตามการกางสองนิ้วหรือแตะซ้ำ แต่ยังเลื่อนเมนู ปรับค่า และซูมแผนที่ได้ตามปกติ
 
 ## โครงสร้าง
+
+เอกสารความรู้และคู่มือทั้งหมด: [KM](KM/README.md)
+
 ```
 index.html      ตัว app (Leaflet)
 config.js       ★ URL แผนที่ (MAP_URL, MAPS) + GS เริ่มต้น
 sw.js           service worker (PWA / offline cache)
 lib/            leaflet, jszip, pmtiles
 tools/          สคริปต์แปลงแผนที่ / สร้าง KMZ / start.bat (ใช้ในเครื่อง)
-docs/ONLINE.md  คู่มือทำแผนที่ + เอาขึ้น online (repo DataBase)
+KM/            เอกสารสรุปโปรเจกต์และคู่มือแผนที่ (Markdown)
+docs/          ภาพประกอบและตัวอย่างหน้าจอ
+AGENTS.md      กติกาสำหรับผู้ช่วยเขียนโค้ด + ลิงก์เข้าสู่ KM
 ```
 
 ## ระบบ
@@ -58,6 +63,6 @@ repo DataBase (Release falcon2cp-maps) ──> spidersqdn.github.io/DataBase/Fal
 ```
 
 ## ทำแผนที่ใหม่ (ในเครื่อง)
-1. OSGeo4W Shell: `C:\PFPS\map1\make_rpf.bat <folder>` แล้วแปลงเป็น `.pmtiles` ด้วย `pmtiles.exe` → ดู [docs/ONLINE.md](docs/ONLINE.md)
+1. OSGeo4W Shell: `C:\PFPS\map1\make_rpf.bat <folder>` แล้วแปลงเป็น `.pmtiles` ด้วย `pmtiles.exe` → ดู [คู่มือแผนที่](KM/ONLINE.md)
 2. อัปโหลดเข้า Release `falcon2cp-maps` ของ repo DataBase แล้ว Actions > Build offline map and deploy > Run workflow
 3. เพิ่ม URL ใน `config.js` > Commit → เว็บอัปเดตเองใน ~1 นาที

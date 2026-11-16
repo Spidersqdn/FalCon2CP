@@ -1,6 +1,6 @@
 # FalCon2CP – Project Summary (for AI agents / new contributors)
 
-Last updated: 2026-11-15 (mobile menu gestures and paper pinch zoom). Owner: SPD (`Spidersqdn`). Owner writes Thai; reply concise, copy-paste ready.
+Last updated: 2026-11-16 (knowledge docs in KM). Owner: SPD (`Spidersqdn`). Owner writes Thai; reply concise, copy-paste ready.
 
 ## 1. Purpose
 Web app for helicopter mission route maps on FalconView (CADRG/RPF) charts, styled like **AirNavFlow**
@@ -21,7 +21,11 @@ manifest.webmanifest  PWA manifest; icon.svg, icon-192/512.png
 lib/                  leaflet, pmtiles, jszip, jspdf, html2canvas (lazy), fonts/ (Sarabun woff2)
 icons/slide-bg.jpg    SLIDE background
 tools/                local scripts (make_pmtiles.bat, make_tiles.bat, make_route_kmz.py, start.bat)
-docs/ONLINE.md        how to build maps + put them online (DataBase repo)
+KM/README.md          knowledge documentation index
+KM/PROJECT_SUMMARY.md this project summary
+KM/ONLINE.md          how to build maps + put them online (DataBase repo)
+AGENTS.md             agent rules + entry point to KM
+docs/                 screenshots and previews
 README.md             user guide (Thai)
 ```
 
@@ -91,7 +95,7 @@ README.md             user guide (Thai)
   opened with **📁 IMPORT MAP**. Chrome/Edge keep a file handle (no copy); Safari stores one copy in IndexedDB.
 - Source: `C:\PFPS\map1\rpf\<series>` (cjga, ctpc, conc, cjnc, cgnc, ctlm50; no A.TOC).
   Convert on owner's PC: OSGeo4W Shell → `C:\PFPS\map1\make_rpf.bat <folder>` → `pmtiles.exe` (in `C:\PFPS\map1\`).
-  See `docs/ONLINE.md`. Cloud agents cannot download the maps (network blocked) – conversion is done locally by owner.
+  See [ONLINE.md](ONLINE.md). Cloud agents cannot download the maps (network blocked) – conversion is done locally by owner.
 - `?map=<url>` opens another PMTiles temporarily. `*.pmtiles` is git-ignored – never commit maps.
 
 ## 6. Place search data
@@ -103,6 +107,7 @@ To add/fix an airport: edit `CoWork/AP.txt` in DataBase repo.
 Keep separate source positions even when nearby (some are approximate). Airport pane is below route graphics.
 
 ## 7. Conventions / rules (important)
+- Knowledge Markdown lives in `KM/`; keep repository `README.md` and `AGENTS.md` at the root. Update this summary when adding features or changing rules (under 200 lines).
 - **Owner uses Safari (iPad/iPhone)** – test WebKit behaviour; Safari ignores `@page` margins (hence jsPDF export).
 - Layout: PC sidebar fixed **390px** (same as AirNavFlow `#panel`); responsive for phone/tablet;
   phone landscape (max-height:500px) uses floating editor `#edp` instead of the side panel (`isSheet()`).
