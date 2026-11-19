@@ -1,6 +1,6 @@
 # FalCon2CP – Project Summary (for AI agents / new contributors)
 
-Last updated: 2026-11-16 (knowledge docs in KM). Owner: SPD (`Spidersqdn`). Owner writes Thai; reply concise, copy-paste ready.
+Last updated: 2026-11-16 (usage/FAQ/feedback knowledge for a future bot). Owner: SPD (`Spidersqdn`). Owner writes Thai; reply concise, copy-paste ready.
 
 ## 1. Purpose
 Web app for helicopter mission route maps on FalconView (CADRG/RPF) charts, styled like **AirNavFlow**
@@ -24,6 +24,10 @@ tools/                local scripts (make_pmtiles.bat, make_tiles.bat, make_rout
 KM/README.md          knowledge documentation index
 KM/PROJECT_SUMMARY.md this project summary
 KM/ONLINE.md          how to build maps + put them online (DataBase repo)
+KM/USER_GUIDE.md      current user workflows and limitations
+KM/FAQ.md             concise usage/troubleshooting answers
+KM/FEEDBACK.md        feedback intake process and templates
+KM/BOT_GUIDE.md       bot knowledge setup, answer rules and acceptance questions
 AGENTS.md             agent rules + entry point to KM
 docs/                 screenshots and previews
 README.md             user guide (Thai)
@@ -136,5 +140,6 @@ Keep separate source positions even when nearby (some are approximate). Airport 
 - `Spidersqdn/FLIGHT` – AirNavFlow (style reference: sidebar, place search, NAVIGATION look).
 
 ## 10. Open ideas (not started)
+- A support bot can use USER_GUIDE/FAQ/FEEDBACK/BOT_GUIDE as its knowledge base. Channel, feedback storage and automation are not selected/connected yet.
 - AirNavFlow could read `CoWork/AP.txt` instead of its own airport list (needs FLIGHT repo change).
 - Optional APK (Capacitor) / .exe (Tauri) wrappers – reuse IMPORT MAP, no map bundling.
