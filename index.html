@@ -1136,14 +1136,20 @@ function pvPrint(){if(!PV)return;$('pInfo').textContent=`พิมพ์ ${PV.im
 const printPages=()=>previewPages('print'),exportPDF=()=>previewPages('pdf');
 addEventListener('afterprint',()=>{document.body.classList.remove('prtmode');prUpd()});
 // ---- init ----
-const qm=new URLSearchParams(location.search).get('map')||(window.CONFIG&&CONFIG.MAP_URL);
+// ?map=<url>: a link can point the app at any map server and the choice is then saved, so a map from a site the app
+// does not already use (this site, CONFIG.MAP_URL / CONFIG.MAPS) is opened only after the user agrees.
+const mapOk=v=>{try{const u=new URL(v,location.href);if(!/^https?:$/.test(u.protocol))return false;
+  const C=window.CONFIG||{},known=[location.href,C.MAP_URL,...(C.MAPS||[]).map(m=>m.url)].filter(Boolean).map(x=>{try{return new URL(x,location.href).origin}catch(e){return ''}});
+  return known.includes(u.origin)||confirm(`ลิงก์นี้จะเปิดแผนที่จากเว็บอื่น:\n${u.host}\n\nกด OK เฉพาะเมื่อไว้ใจผู้ส่งลิงก์ (Cancel = ใช้แผนที่เดิม)`)}catch(e){return false}};
+const qv=new URLSearchParams(location.search).get('map'),qp=qv&&mapOk(qv)?qv:null;
+const qm=qp||(window.CONFIG&&CONFIG.MAP_URL);
 if(S.cfg&&/\.r2\.dev\//.test(S.cfg.url||''))S.cfg.url=S.cfg.url.replace(/^https:\/\/[^/]+\.r2\.dev\//,'https://spidersqdn.github.io/DataBase/FalCon2CP/'); // maps moved off R2 (2026-11)
 if(S.cfg){$('tileUrl').value=S.cfg.url||$('tileUrl').value;$('tms').checked=!!S.cfg.tms;$('kt').value=S.cfg.kt&&S.cfg.kt!='90'?S.cfg.kt:120;if(S.cfg.osm)$('tileUrl').value=OSM}
 if(S.pr){$('pS').value=S.pr.S;$('pF').value=S.pr.F||100;$('pP').value=S.pr.P;$('pO').value=S.pr.O;$('pOv').value=S.pr.ov;$('pM').value=S.pr.m;$('pLb').checked=S.pr.lb!==false}else if(/500k/i.test($('tileUrl').value))$('pS').value='500000';
 pmSet(S.ui.prAll);
 $('offl').checked=S.ui.off;
 if(!S.pts.length&&!localStorage.getItem('routeS'))S.pts=[{type:'PZ',name:'ท่าอากาศยานร้อยเอ็ด',lat:16.1168,lon:103.7741,alt:'1100'},{type:'CP2',name:'สนาม ฮ. พล.ร.6',lat:16.105,lon:103.545,alt:'1100'},{type:'LZ',name:'สนาม ฮ. รร.สารคามพิทยาคม',lat:16.184,lon:103.3,alt:''}];
-if(new URLSearchParams(location.search).get('map')||!S.cfg||!/^(https?|local):/.test($('tileUrl').value))$('tileUrl').value=qm||$('tileUrl').value;
+if(qp||!S.cfg||!/^(https?|local):/.test($('tileUrl').value))$('tileUrl').value=qm||$('tileUrl').value;
 [...(window.CONFIG&&CONFIG.MAPS||[]),{name:'OpenStreetMap (offline cache)',url:'osm'},{name:'ภาพดาวเทียม (Esri)',url:'sat'}].forEach(m=>$('mapSel').add(new Option(m.name,m.url)));
 $('mapSel').add(new Option('-- URL เอง --',''));$('mapSel').value=$('tileUrl').value===OSM?'osm':$('tileUrl').value===SAT?'sat':$('tileUrl').value;
 globSizes();setMode(S.ui.mode);routeBtns();setStyle(S.ui.style);setBase();togTxt();if(S.pts.length)map.fitBounds(S.pts.map(p=>[p.lat,p.lon]),{padding:innerWidth<700?[30,30]:[120,120]});else map.setView([16.1168,103.7741],9);cacheInfo();lmInit();setAirports(S.ui.airports);

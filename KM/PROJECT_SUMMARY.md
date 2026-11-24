@@ -100,7 +100,7 @@ README.md             user guide (Thai)
 - Source: `C:\PFPS\map1\rpf\<series>` (cjga, ctpc, conc, cjnc, cgnc, ctlm50; no A.TOC).
   Convert on owner's PC: OSGeo4W Shell → `C:\PFPS\map1\make_rpf.bat <folder>` → `pmtiles.exe` (in `C:\PFPS\map1\`).
   See [ONLINE.md](ONLINE.md). Cloud agents cannot download the maps (network blocked) – conversion is done locally by owner.
-- `?map=<url>` opens another PMTiles temporarily. `*.pmtiles` is git-ignored – never commit maps.
+- `?map=<url>` opens another PMTiles temporarily; a URL on a site not in `config.js` asks the user first (`mapOk`). `*.pmtiles` is git-ignored – never commit maps.
 
 ## 6. Place search data
 `CONFIG.COWORK_URL` = `https://spidersqdn.github.io/DataBase/CoWork/` (repo DataBase, folder `CoWork/`):
