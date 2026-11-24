@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>FalCon2CP</title>
-<link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="icon" href="icon-192.png" sizes="192x192"><link rel="apple-touch-icon" href="icon-192.png"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#1b1d20">
+<link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="icon" href="icon-192.png" sizes="192x192"><link rel="apple-touch-icon" href="icon-192.png"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#232529">
 <link rel="stylesheet" href="lib/leaflet.css"><script src="lib/leaflet.js"></script><script src="lib/jszip.min.js"></script><script src="lib/pmtiles.js"></script><script src="config.js"></script>
 <style>
 :root{--bd:#1F4E79;--bg:#232529;--bg2:#1b1d20;--ln:#34373c;--tx:#e8e8e8;--mu:#9aa0a6;--au:#F2B43C;--cy:#5BC0EB}
@@ -135,9 +135,7 @@ fieldset>*:not(legend){clear:both}
 body{height:100dvh}
 /* iOS home-screen app with black-translucent status bar: 100vh/dvh stops short of the bottom edge, so pin body to the screen edges */
 @media screen{html,body{height:100%}body{position:fixed;top:0;left:0;right:0;bottom:0;height:auto}}
-/* iOS home-screen app bug: the layout viewport is shorter than the screen by the status-bar height -> extend body by safe-area-inset-top; html bg matches the panel as fallback */
-html{background:var(--bg)}
-@media screen and (display-mode:standalone){body{bottom:auto;height:calc(100vh + env(safe-area-inset-top,0px))}}
+html{background:#232529}
 /* iPhone: map fills the screen under the status bar / notch; keep controls clear of it */
 .leaflet-top{top:env(safe-area-inset-top,0px)}.leaflet-left{left:env(safe-area-inset-left,0px)}.leaflet-right{right:env(safe-area-inset-right,0px)}
 #edp{padding-top:max(8px,env(safe-area-inset-top,0px))}
