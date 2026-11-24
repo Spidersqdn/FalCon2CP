@@ -211,6 +211,8 @@ html{background:#232529}
   <div class="sm" id="lmInfo">เปิดไฟล์แผนที่จากเครื่องโดยตรง ไม่คัดลอกไฟล์ ใช้ได้โดยไม่ต้องมีเน็ต</div>
   <div class="sm" id="cacheInfo">-</div>
   <button onclick="clearCache()">ล้าง cache แผนที่</button>
+  <button id="elvB" onclick="elvDl()">⛰ โหลด Elevation พื้นที่บนจอ (ใช้ offline)</button>
+  <div class="sm" id="elvInfo">เก็บข้อมูลความสูงของพื้นที่ที่เห็นบนแผนที่ไว้ในเครื่อง ใช้ทำ Elevation Profile / ความสูงบินอัตโนมัติตอนไม่มีเน็ต</div>
   <details><summary class="sm">ขั้นสูง: URL แผนที่เอง</summary>
    <input id="tileUrl" style="width:100%" value="map.pmtiles" placeholder="map.pmtiles หรือ tiles/{z}/{x}/{y}.png">
    <label><input type="checkbox" id="tms"> TMS (gdal2tiles ไม่ได้ใส่ --xyz)</label>
@@ -849,6 +851,21 @@ document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLower
 // ---- offline cache (service worker) ----
 async function cacheInfo(){try{const k=await caches.open('tiles').then(c=>c.keys());const e=await navigator.storage?.estimate?.();
   $('cacheInfo').textContent=`เก็บแล้ว ${k.length} ชิ้น`+(e?` · ${(e.usage/1048576).toFixed(0)} MB`:'')}catch(e){$('cacheInfo').textContent='offline ใช้ได้เมื่อเปิดผ่าน https'}}
+// elevation for offline: the same z12 terrain tiles the profile uses, for the area on screen, stored in the 'tiles' cache (the service worker serves them offline)
+let elvRun=null;
+async function elvDl(){if(elvRun){elvRun.stop=1;return}
+  const b=map.getBounds(),z=12,n=2**z,tx=lo=>Math.floor((lo+180)/360*n),ty=la=>{const r=la*Math.PI/180;return Math.floor((1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*n)};
+  const x0=Math.max(0,tx(b.getWest())),x1=Math.min(n-1,tx(b.getEast())),y0=Math.max(0,ty(b.getNorth())),y1=Math.min(n-1,ty(b.getSouth())),N=(x1-x0+1)*(y1-y0+1);
+  if(N>3000)return alert(`พื้นที่บนจอใหญ่เกินไป (${N} ชิ้น) ซูมเข้าให้เห็นเฉพาะพื้นที่ที่จะบินก่อน (ไม่เกิน 3000 ชิ้น)`);
+  if(!confirm(`โหลดข้อมูลความสูง ${N} ชิ้น (ประมาณ ${Math.max(1,Math.round(N*0.1))} MB) ของพื้นที่บนจอ เก็บไว้ใช้ offline?`))return;
+  let c;try{c=await caches.open('tiles')}catch(e){return alert('เบราว์เซอร์นี้เก็บข้อมูล offline ไม่ได้')}
+  const L_=[];for(let x=x0;x<=x1;x++)for(let y=y0;y<=y1;y++)L_.push(`https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${z}/${x}/${y}.png`);
+  const st=elvRun={stop:0};let done=0,bad=0,k=0;$('elvB').textContent='⏹ หยุดโหลด Elevation';
+  const show=()=>$('elvInfo').textContent=`Elevation: ${done}/${N} ชิ้น${bad?` · ไม่สำเร็จ ${bad}`:''}`;
+  const work=async()=>{while(!st.stop&&k<L_.length){const u=L_[k++];
+    try{if(!(await c.match(u))){const r=await fetch(u,{mode:'cors'});if(!r.ok)throw 0;await c.put(u,r)}}catch(e){bad++}done++;if(done%10===0||done===N)show()}};
+  show();await Promise.all(Array.from({length:6},work));elvRun=null;$('elvB').textContent='⛰ โหลด Elevation พื้นที่บนจอ (ใช้ offline)';
+  $('elvInfo').textContent=st.stop?`หยุดแล้ว: เก็บ ${done-bad}/${N} ชิ้น`:`เก็บ Elevation แล้ว ${done-bad}/${N} ชิ้น${bad?` (ไม่สำเร็จ ${bad} ชิ้น กดอีกครั้งเพื่อโหลดส่วนที่ขาด)`:''} · ใช้ได้ตอนไม่มีเน็ต`;cacheInfo()}
 async function clearCache(){if(!confirm('ลบแผนที่ที่เก็บไว้ offline ทั้งหมด?'))return;await caches.delete('tiles');cacheInfo()}
 if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost')){
   navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>{swReg=r;return navigator.serviceWorker.ready}).then(()=>{save();setInterval(()=>{if(!document.hidden)cacheInfo()},5000)}).catch(()=>{});
