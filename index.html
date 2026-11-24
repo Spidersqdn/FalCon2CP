@@ -133,8 +133,8 @@ fieldset>*:not(legend){clear:both}
 .box,.lbl{cursor:pointer}
 /* ---- responsive: tablet / phone / touch ---- */
 body{height:100dvh}
-/* iOS home-screen app with black-translucent status bar: 100vh/dvh stops short of the bottom edge, so pin body to the screen edges */
-@media screen{html,body{height:100%}body{position:fixed;top:0;left:0;right:0;bottom:0;height:auto}}
+/* iOS home-screen app: 100%/100vh/dvh stop short of the bottom by the status-bar height -> app height = whole screen (--app-h set by JS, same as AirNavFlow) */
+@media screen{html,body{height:100vh;height:var(--app-h,100dvh)}body{overflow:hidden}}
 html{background:#232529}
 /* iPhone: map fills the screen under the status bar / notch; keep controls clear of it */
 .leaflet-top{top:env(safe-area-inset-top,0px)}.leaflet-left{left:env(safe-area-inset-left,0px)}.leaflet-right{right:env(safe-area-inset-right,0px)}
@@ -166,12 +166,12 @@ html{background:#232529}
 /* phone portrait: map on top, panel as bottom sheet */
 @media (max-width:700px) and (orientation:portrait){
  body{flex-direction:column-reverse}
- #side{width:100%;min-width:0;height:48dvh;flex:none;border-right:0;border-top:2px solid var(--au)}
- body.full #side{height:85dvh}
- #tog{top:auto;bottom:48dvh;left:50%;transform:translateX(-50%);width:96px;height:26px;border:1px solid #000;border-bottom:0;border-radius:10px 10px 0 0;box-shadow:0 -2px 4px #0006;font-size:13px}
- body.full #tog{bottom:85dvh}body.hide #tog{left:50%;bottom:0}
+ #side{width:100%;min-width:0;height:calc(var(--app-h,100dvh)*.48);flex:none;border-right:0;border-top:2px solid var(--au)}
+ body.full #side{height:calc(var(--app-h,100dvh)*.85)}
+ #tog{top:calc(var(--app-h,100dvh)*.52 - 26px);bottom:auto;left:50%;transform:translateX(-50%);width:96px;height:26px;border:1px solid #000;border-bottom:0;border-radius:10px 10px 0 0;box-shadow:0 -2px 4px #0006;font-size:13px}
+ body.full #tog{top:calc(var(--app-h,100dvh)*.15 - 26px)}body.hide #tog{left:50%;top:calc(var(--app-h,100dvh) - 26px)}
  /* leg/label editor: sits over the bottom menu (sheet) so the map stays visible */
- #edp,#edp.lft{top:auto;bottom:0;left:0;right:0;width:auto;height:48dvh;max-height:none;border-right:0;border-radius:12px 12px 0 0;border-top:2px solid var(--au);box-shadow:0 -4px 14px #0007;padding:8px 14px calc(12px + env(safe-area-inset-bottom));z-index:1100}
+ #edp,#edp.lft{top:calc(var(--app-h,100dvh)*.52);bottom:auto;left:0;right:0;width:auto;height:calc(var(--app-h,100dvh)*.48);max-height:none;border-right:0;border-radius:12px 12px 0 0;border-top:2px solid var(--au);box-shadow:0 -4px 14px #0007;padding:8px 14px calc(12px + env(safe-area-inset-bottom));z-index:1100}
  body.editing #tog{display:none}
  #edp .edh{float:right;margin:0 -6px 0 8px}#edp .edh button:first-child{display:none}
  #hdr{padding:10px 14px 8px}#hdr b{font-size:16px}
@@ -1101,4 +1101,9 @@ if(new URLSearchParams(location.search).get('map')||!S.cfg||!/^(https?|local):/.
 [...(window.CONFIG&&CONFIG.MAPS||[]),{name:'OpenStreetMap (offline cache)',url:'osm'},{name:'ภาพดาวเทียม (Esri)',url:'sat'}].forEach(m=>$('mapSel').add(new Option(m.name,m.url)));
 $('mapSel').add(new Option('-- URL เอง --',''));$('mapSel').value=$('tileUrl').value===OSM?'osm':$('tileUrl').value===SAT?'sat':$('tileUrl').value;
 globSizes();setMode(S.ui.mode);routeBtns();setStyle(S.ui.style);setBase();togTxt();if(S.pts.length)map.fitBounds(S.pts.map(p=>[p.lat,p.lon]),{padding:innerWidth<700?[30,30]:[120,120]});else map.setView([16.1168,103.7741],9);cacheInfo();lmInit();setAirports(S.ui.airports);
+// iOS Home Screen app: 100%/100vh leave a gap at the bottom (short by the status bar) -> size the app to the real screen (as AirNavFlow)
+(function(){const st=navigator.standalone===true||(window.matchMedia&&matchMedia('(display-mode: standalone)').matches);
+  function fit(){let h=innerHeight;if(st&&window.screen){const pt=innerHeight>=innerWidth,sh=pt?Math.max(screen.width,screen.height):Math.min(screen.width,screen.height);if(Math.abs(sh-h)<=120)h=Math.max(h,sh)}
+    document.documentElement.style.setProperty('--app-h',h+'px');try{map.invalidateSize()}catch(e){}}
+  fit();addEventListener('resize',fit);addEventListener('orientationchange',()=>setTimeout(fit,300))})();
 </script></body></html>
