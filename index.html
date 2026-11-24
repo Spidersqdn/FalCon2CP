@@ -331,10 +331,13 @@ async function lmDel(){const u=$('tileUrl').value;if(!u.startsWith('local:'))ret
 function pmLayer(u){const f=u.startsWith('local:')&&LM[lmName(u)];
   if(u.startsWith('local:')&&!f){pmSrc=null;return L.layerGroup()}
   const p=new pmtiles.PMTiles(f?new pmtiles.FileSource(f):u);pmSrc={u,p,max:12};const l=pmtiles.leafletRasterLayer(p,{maxZoom:18,maxNativeZoom:12});
-  p.getHeader().then(h=>{pmSrc.max=h.maxZoom;pmSrc.min=h.minZoom;l.options.maxNativeZoom=h.maxZoom;l.options.minNativeZoom=h.minZoom;l.redraw()}).catch(()=>{});return l;}
+  p.getHeader().then(h=>{pmSrc.max=h.maxZoom;pmSrc.min=h.minZoom;l.options.maxNativeZoom=h.maxZoom;l.options.minNativeZoom=h.minZoom;
+    if(base===l)map.setMinZoom(Math.max(MINZ,(h.minZoom||0)-1)); // zooming out far below the map's own levels loads thousands of scaled tiles -> iPhone runs out of memory
+    l.redraw()}).catch(()=>{});return l;}
 function pickMap(v){if(v&&v.startsWith('local:')&&!LM[lmName(v)]&&LH[lmName(v)]){const n=lmName(v);LH[n].requestPermission({mode:'read'}).then(r=>r==='granted'&&LH[n].getFile()).then(f=>{if(f){LM[n]=f;$('lmInfo').textContent=`เปิด ${n} แล้ว`;if($('tileUrl').value===v)setBase()}else lmAsk(n)}).catch(()=>lmAsk(n))}
   if(/500k/i.test(v))$('pS').value='500000';else if(/250k/i.test(v))$('pS').value='250000';if(v==='osm'){$('tileUrl').value=OSM}else if(v==='sat'){$('tileUrl').value=SAT}else if(v)$('tileUrl').value=v;setBase();$('lmDel').style.display=$('tileUrl').value.startsWith('local:')?'':'none'}
-function setBase(){ if(base)map.removeLayer(base);const u=$('tileUrl').value;
+const MINZ=3;
+function setBase(){ if(base)map.removeLayer(base);const u=$('tileUrl').value;map.setMinZoom(MINZ);
   base=u===OSM?L.tileLayer(OSM,{maxZoom:19,crossOrigin:true,attribution:'© OpenStreetMap'})
     :u===SAT?L.tileLayer(SAT,{maxZoom:19,maxNativeZoom:18,crossOrigin:true,attribution:'Imagery © Esri, Maxar, Earthstar Geographics'})
     :/\.pmtiles$/i.test(u)?pmLayer(u)
