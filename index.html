@@ -127,7 +127,7 @@ fieldset>*:not(legend){clear:both}
 #edp{display:none;position:fixed;top:12px;right:12px;width:270px;max-height:calc(100vh - 24px);overflow:auto;background:#fff;color:#222;border-radius:8px;box-shadow:0 4px 18px #0007;padding:10px 12px;z-index:1000;font-size:12px}
 #edp.lft{right:auto;left:calc(390px + 12px)}.edh{display:flex;justify-content:flex-end;gap:4px;margin:-4px -4px 2px}.edh button{background:#eee!important;color:#333!important;border:0;padding:2px 8px}
 .edh .grip{flex:1;cursor:move;user-select:none;touch-action:none;color:#888;font-size:11px;align-self:center;padding:2px 0}.edh .grip:hover{color:#333}
-#edp .rd{display:flex;gap:4px;margin:0 0 6px}#edp .rd select{flex:1.4;min-width:0}#edp .rd input{flex:1;min-width:0;width:auto}#edp .rd button{width:auto;margin:0;padding:4px 10px}
+.rd{display:flex;gap:4px;margin:0 0 6px}.rd select{flex:1.4;min-width:0}.rd input{flex:1;min-width:0;width:auto}.rd button{width:auto;margin:0;padding:4px 10px}.rdc{font:11px Consolas,monospace;color:var(--mu)}#edp .ll{display:flex;gap:4px;margin:6px 0 2px}#edp .ll input{flex:1;min-width:0}
 #edp .pos{margin:8px 0 6px;padding:6px 8px;background:#f3f4f6;border:1px solid #d5d8dc;border-radius:6px;font-family:Consolas,monospace}#edp .pos div{display:flex;justify-content:space-between;gap:8px}#edp .pos span{color:#666;font-size:11px}#edp .pos b{color:#111;font-size:13px}
 #edp input:not([type=checkbox]):not([type=range]),#edp select{background:#eceef1;color:#111;border:1px solid #b9bec5}#edp input::placeholder{color:#6b7078}
 .pop input{width:100%;margin:2px 0 6px;padding:4px}.pop label{display:block;color:#333;font-size:11px}.pop button{margin-right:4px;color:#fff}
@@ -632,24 +632,31 @@ function editLbl(i){const p=S.pts[i];
    <label>ขนาดป้าย/ตาราง</label>${pctIn('lS',(p.lsc||S.ui.lsc||1)*100,`S.pts[${i}].lsc=this.value/100;draw()`)}
    <label>ขนาดสัญลักษณ์จุด</label>${pctIn('mS',(p.msc||S.ui.msc||1)*100,`S.pts[${i}].msc=this.value/100;draw()`)}
    <label>เลื่อนตาราง ซ้าย/ขวา</label><input type="range" min="-200" max="200" value="${p.tbx??S.ui.tbx??0}" oninput="S.pts[${i}].tbx=+this.value;draw()">
+   <div class="ll"><input value="${ddm(p.lat)}" title="Lat (DD MM.mm)" inputmode="decimal" onchange="llSet(${i},'lat',this.value)"><input value="${ddm(p.lon)}" title="Lon (DDD MM.mm)" inputmode="decimal" onchange="llSet(${i},'lon',this.value)"></div>
    <div class="pos"><div><span>LAT/LONG</span><b>${ddm(p.lat)}&nbsp;&nbsp;${ddm(p.lon)}</b></div><div><span>MGRS</span><b>${mgrs(p.lat,p.lon)}</b></div><div><span>RADIAL/DME</span><b id="rdCur">…</b></div></div>
-   <div class="rd"><select id="rdAp" onchange="rdShow(${i})"><option>กำลังโหลดสนามบิน…</option></select><input id="rdR" type="number" inputmode="decimal" min="0" max="360" placeholder="RADIAL°"><input id="rdD" type="number" inputmode="decimal" min="0" step="0.1" placeholder="DME NM"><button onclick="rdSet(${i})" title="ย้ายจุดไปที่ Radial/DME นี้">ตั้ง</button></div>
+   ${rdUi(i)}
    <label style="color:#333"><input type="checkbox" id="lAll" style="width:auto"> ใช้ขนาด/ตำแหน่งนี้กับทุกป้าย</label>
    <button class="pri" onclick="saveLbl(${i})">บันทึก</button><button onclick="['ltxt','lcol','noTbl','tv','lsc','msc','tbx'].forEach(k=>delete S.pts[${i}][k]);closeEd();draw()">คืนค่าเดิม</button><button style="background:#d9534f;border-color:#d9534f" onclick="delPt(${i})">🗑 ลบจุดนี้</button>`);rdFill(i)}
 // ---- Radial/DME of a point from an airport (default = nearest; true bearing like the rest of the app) ----
-const rdKey=a=>a.id||a.n;let rdList=[];
-function rdFill(i){apLoad().then(ap=>{const p=S.pts[i],sel=$('rdAp');if(!p||!sel)return;
-  rdList=ap.map(a=>({a,d:legCalc(a,p).nm})).sort((x,y)=>x.d-y.d).slice(0,40).map(x=>x.a);
-  const k=p.rdAp&&ap.find(a=>rdKey(a)===p.rdAp);if(k&&!rdList.includes(k))rdList.unshift(k);
-  sel.innerHTML=rdList.map((a,j)=>`<option value="${j}">${esc(((a.id?a.id+' ':'')+a.n).trim())} (${legCalc(a,p).nm.toFixed(0)} NM)</option>`).join('');
-  sel.value=String(k?rdList.indexOf(k):0);rdShow(i)}).catch(()=>{const sel=$('rdAp');if(sel)sel.innerHTML='<option>โหลดสนามบินไม่ได้</option>'})}
-function rdShow(i){const p=S.pts[i],a=rdList[+$('rdAp').value];if(!p||!a)return;const c=legCalc(a,p);
-  $('rdCur').textContent=`${a.id||a.n} R${pad3(c.tc)} / ${c.nm.toFixed(1)} NM`;$('rdR').value=Math.round(c.tc)%360;$('rdD').value=c.nm.toFixed(1)}
-function rdSet(i){const p=S.pts[i],a=rdList[+$('rdAp').value],r=+$('rdR').value,nm=+$('rdD').value;
-  if(!p||!a||!($('rdR').value!==''&&r>=0&&r<=360)||!(nm>=0))return alert('ใส่ RADIAL (0-360) และ DME (NM)');
+const rdKey=a=>a.id||a.n,rdL={};
+// s = id suffix: '' in the map editor, '_<i>' in the waypoint list row
+const rdUi=(i,s='')=>`<div class="rd"${s?' style="grid-column:span 5"':''}><select id="rdAp${s}" onchange="rdShow(${i},'${s}')"><option>กำลังโหลดสนามบิน…</option></select><input id="rdR${s}" type="number" inputmode="decimal" min="0" max="360" placeholder="RADIAL°"><input id="rdD${s}" type="number" inputmode="decimal" min="0" step="0.1" placeholder="DME NM"><button onclick="rdSet(${i},'${s}')" title="ย้ายจุดไปที่ Radial/DME นี้">SET</button></div>`;
+function rdFill(i,s=''){apLoad().then(ap=>{const p=S.pts[i],sel=$('rdAp'+s);if(!p||!sel)return;
+  const L_=ap.map(a=>({a,d:legCalc(a,p).nm})).sort((x,y)=>x.d-y.d).slice(0,40).map(x=>x.a);
+  const k=p.rdAp&&ap.find(a=>rdKey(a)===p.rdAp);if(k&&!L_.includes(k))L_.unshift(k);rdL[s]=L_;
+  sel.innerHTML=L_.map((a,j)=>`<option value="${j}">${esc(((a.id?a.id+' ':'')+a.n).trim())} (${legCalc(a,p).nm.toFixed(0)} NM)</option>`).join('');
+  sel.value=String(k?L_.indexOf(k):0);rdShow(i,s)}).catch(()=>{const sel=$('rdAp'+s);if(sel)sel.innerHTML='<option>โหลดสนามบินไม่ได้</option>'})}
+function rdShow(i,s=''){const p=S.pts[i],a=(rdL[s]||[])[+$('rdAp'+s).value];if(!p||!a)return;const c=legCalc(a,p);
+  const cur=$('rdCur'+s);if(cur)cur.textContent=`${a.id||a.n} R${pad3(c.tc)} / ${c.nm.toFixed(1)} NM`;$('rdR'+s).value=Math.round(c.tc)%360;$('rdD'+s).value=c.nm.toFixed(1)}
+function rdSet(i,s=''){const p=S.pts[i],a=(rdL[s]||[])[+$('rdAp'+s).value],rv=$('rdR'+s).value,r=+rv,nm=+$('rdD'+s).value;
+  if(!p||!a||!(rv!==''&&r>=0&&r<=360)||!(nm>=0))return alert('ใส่ RADIAL (0-360) และ DME (NM)');
   const k=Math.PI/180,d=nm/3440.065,t=r*k,f1=a.lat*k,l1=a.lon*k,f2=Math.asin(Math.sin(f1)*Math.cos(d)+Math.cos(f1)*Math.sin(d)*Math.cos(t)),
     l2=l1+Math.atan2(Math.sin(t)*Math.sin(d)*Math.cos(f1),Math.cos(d)-Math.sin(f1)*Math.sin(f2)),oi=inOther(p),q=oi>=0?S.alt[oi]:null;
-  [p,q].forEach(x=>{if(!x)return;x.lat=+(f2/k).toFixed(6);x.lon=+(((l2/k)+540)%360-180).toFixed(6);x.rdAp=rdKey(a)});draw();editLbl(i)}
+  [p,q].forEach(x=>{if(!x)return;x.lat=+(f2/k).toFixed(6);x.lon=+(((l2/k)+540)%360-180).toFixed(6);x.rdAp=rdKey(a)});draw();
+  if(s)edOpen(i);else editLbl(i)}
+// waypoint list row: open the edit fields (and its Radial/DME airports)
+function edOpen(i,tog){const e=document.querySelectorAll('#wpl > li')[i]?.querySelector('.ed');if(!e)return;const on=tog?e.classList.toggle('on'):(e.classList.add('on'),true);if(on)rdFill(i,'_'+i)}
+function llSet(i,k,v){const x=parseCoord(v);if(x===null)return alert('รูปแบบพิกัดไม่ถูกต้อง');const p=S.pts[i],oi=inOther(p),q=oi>=0?S.alt[oi]:null;[p,q].forEach(o=>{if(o)o[k]=x});draw();editLbl(i)}
 function delPt(i){const p=S.pts[i];if(!confirm('ลบจุด '+(p.type+' '+p.name).trim()+' ? (กด Undo เพื่อย้อนได้)'))return;resetBox(i-1);S.pts.splice(i,1);closeEd();draw()}
 // point type: PZ / LZ move the point to the start / end (the old PZ / LZ becomes a CP);
 // CP หลัก / CP สำรอง keep it as a CP on that route, moving it across routes (in import order) when needed
@@ -680,14 +687,15 @@ function saveLbl(i){const p=S.pts[i];p.ltxt=$('eL').value.trim();if(p.ltxt===(p.
   if($('lAll').checked){S.ui.lsc=p.lsc;S.ui.msc=p.msc;S.pts.forEach(q=>{delete q.lsc;delete q.msc;q.tbx=p.tbx})}closeEd();draw()}
 // ---- waypoint list (AirNavFlow style) ----
 function list(L_,tot,tmin){
-  $('wpl').innerHTML=S.pts.map((p,i)=>{const l=L_[i-1];return `<li><div class="wr"><div class="wi" onclick="this.closest('li').querySelector('.ed').classList.toggle('on')" title="แตะเพื่อแก้ไข">
+  $('wpl').innerHTML=S.pts.map((p,i)=>{const l=L_[i-1];return `<li><div class="wr"><div class="wi" onclick="edOpen(${i},1)" title="แตะเพื่อแก้ไข">
    <div class="nm"><span class="num">${i+1}</span><div style="min-width:0"><b>${esc(p.type)} ${esc(p.name)}</b><div class="sub">${ddm(p.lat)}, ${ddm(p.lon)}</div></div></div>
    ${l?`<div class="lg">${l.nm.toFixed(1)}<i> NM</i> · ${esc(l.crsTxt)}° · ${hm(l.min)}${has(l.alt)?` · <i>ALT</i> ${esc(l.alt)}`:''}</div>`:''}</div>
    <div class="btns"><button onclick="mv(${i},-1)" title="เลื่อนขึ้น">↑</button><button class="x" onclick="resetBox(${i}-1);S.pts.splice(${i},1);draw()" title="ลบ">✕</button>
     <button onclick="mv(${i},1)" title="เลื่อนลง">↓</button><button onclick="ins(${i})" title="แทรกจุดถัดไป">↓+</button>
 </div></div>
    <div class="ed"><input value="${esc(p.name)}" title="Name" onchange="S.pts[${i}].name=this.value;draw()" style="grid-column:span 5">
-    <input value="${ddm(p.lat)}" title="Lat (DD MM.mm)" inputmode="decimal" onchange="setLL(${i},'lat',this.value)" style="grid-column:span 2"><input value="${ddm(p.lon)}" title="Lon (DDD MM.mm)" inputmode="decimal" onchange="setLL(${i},'lon',this.value)" style="grid-column:span 2"></div></li>`}).join('')
+    <input value="${ddm(p.lat)}" title="Lat (DD MM.mm)" inputmode="decimal" onchange="setLL(${i},'lat',this.value)" style="grid-column:span 2"><input value="${ddm(p.lon)}" title="Lon (DDD MM.mm)" inputmode="decimal" onchange="setLL(${i},'lon',this.value)" style="grid-column:span 2">
+    <div class="rdc" id="rdCur_${i}" style="grid-column:span 5"></div>${rdUi(i,'_'+i)}</div></li>`}).join('')
     +(L_.length?`<li class="v" style="color:var(--au);font:bold 12px Consolas,monospace">TOTAL ${tot.toFixed(1)} NM · ${hm(tmin)}</li>`:'');
   profile(L_);$('stD').textContent=tot.toFixed(1)+' NM';$('stT').textContent=hm(tmin);$('stN').textContent=S.pts.length;}
 // reverse: leg data (box pos, overrides, alt, box style) belongs to the leg's start point, so shift it to the new start
