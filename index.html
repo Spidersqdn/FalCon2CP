@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>FalCon2CP</title>
 <link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="icon" href="icon-192.png" sizes="192x192"><link rel="apple-touch-icon" href="icon-192.png"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#1b1d20">
 <link rel="stylesheet" href="lib/leaflet.css"><script src="lib/leaflet.js"></script><script src="lib/jszip.min.js"></script><script src="lib/pmtiles.js"></script><script src="config.js"></script>
@@ -133,6 +133,10 @@ fieldset>*:not(legend){clear:both}
 .box,.lbl{cursor:pointer}
 /* ---- responsive: tablet / phone / touch ---- */
 body{height:100dvh}
+/* iPhone: map fills the screen under the status bar / notch; keep controls clear of it */
+.leaflet-top{top:env(safe-area-inset-top,0px)}.leaflet-left{left:env(safe-area-inset-left,0px)}.leaflet-right{right:env(safe-area-inset-right,0px)}
+#edp{padding-top:max(8px,env(safe-area-inset-top,0px))}
+#side{padding-bottom:env(safe-area-inset-bottom,0px)}
 #map{min-width:0;min-height:0}fieldset{min-width:0}.row>div>input,.row>div>select{width:100%}
 /* Keep menu gestures from zooming the page; Leaflet still handles map gestures. */
 @media (any-pointer:coarse){
