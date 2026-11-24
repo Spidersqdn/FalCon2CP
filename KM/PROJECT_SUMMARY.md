@@ -16,7 +16,7 @@ exports KML/KMZ/GPX/CSV and a 16:9 "Mission Overview" slide PNG.
 ```
 index.html            whole app: CSS (lines ~6-243) + JS (~244-1009). Long minified-style lines.
 config.js             window.CONFIG: MAP_URL, MAPS[] (map dropdown), COWORK_URL, DEFAULT_KT
-sw.js                 service worker: app shell + tile cache (OSM, Esri, DEM, PMTiles ranges). APP='app-v15'
+sw.js                 service worker: app shell + tile cache (OSM, Esri, DEM, PMTiles ranges). APP='app-v16'
 manifest.webmanifest  PWA manifest; icon.svg, icon-192/512.png
 lib/                  leaflet, pmtiles, jszip, jspdf, html2canvas (lazy), fonts/ (Sarabun woff2)
 icons/slide-bg.jpg    SLIDE background
