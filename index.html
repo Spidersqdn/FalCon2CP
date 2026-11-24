@@ -135,6 +135,9 @@ fieldset>*:not(legend){clear:both}
 body{height:100dvh}
 /* iOS home-screen app with black-translucent status bar: 100vh/dvh stops short of the bottom edge, so pin body to the screen edges */
 @media screen{html,body{height:100%}body{position:fixed;top:0;left:0;right:0;bottom:0;height:auto}}
+/* iOS home-screen app bug: the layout viewport is shorter than the screen by the status-bar height -> extend body by safe-area-inset-top; html bg matches the panel as fallback */
+html{background:var(--bg)}
+@media screen and (display-mode:standalone){body{bottom:auto;height:calc(100vh + env(safe-area-inset-top,0px))}}
 /* iPhone: map fills the screen under the status bar / notch; keep controls clear of it */
 .leaflet-top{top:env(safe-area-inset-top,0px)}.leaflet-left{left:env(safe-area-inset-left,0px)}.leaflet-right{right:env(safe-area-inset-right,0px)}
 #edp{padding-top:max(8px,env(safe-area-inset-top,0px))}
