@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>FalCon2CP</title>
 <link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="icon" href="icon-192.png" sizes="192x192"><link rel="apple-touch-icon" href="icon-192.png"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#232529">
 <link rel="stylesheet" href="lib/leaflet.css"><script src="lib/leaflet.js"></script><script src="lib/jszip.min.js"></script><script src="lib/pmtiles.js"></script><script src="config.js"></script>
@@ -284,8 +284,10 @@ const COL={PZ:'#FF66CC',CP:'#22BB33',LZ:'#FFD700'};
 const OSM='https://tile.openstreetmap.org/{z}/{x}/{y}.png',SAT='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'; // SAT: Esri World Imagery
 const $=id=>document.getElementById(id);
 const menuTouchTarget=t=>t instanceof Element&&t.closest('#side,#edp,.ap-layers,#tog,.leaflet-popup,#sld .shd,#sld .sfm,#sld .sbt,#pvw .phd,#pvw .pbt');
+// iPhone/iPad: no double-tap page zoom on menus (a 2nd tap within 300 ms on the same menu is not allowed to zoom)
+let lastTap=0;document.addEventListener('touchend',e=>{if(e.touches.length||!menuTouchTarget(e.target)||e.target.closest('input,select,textarea'))return;const t=Date.now();if(t-lastTap<300){e.preventDefault();e.target.click?.()}lastTap=t},{passive:false,capture:true});
 // Safari gesture events complement touch-action without cancelling menu taps or scrolling.
-for(const type of ['gesturestart','gesturechange'])document.addEventListener(type,e=>{if((navigator.maxTouchPoints>0||matchMedia('(any-pointer:coarse)').matches)&&(menuTouchTarget(e.target)||(pvOn&&map.getContainer().contains(e.target))))e.preventDefault()},{passive:false,capture:true});
+for(const type of ['gesturestart','gesturechange','gestureend'])document.addEventListener(type,e=>{if((navigator.maxTouchPoints>0||matchMedia('(any-pointer:coarse)').matches)&&(menuTouchTarget(e.target)||(pvOn&&map.getContainer().contains(e.target))))e.preventDefault()},{passive:false,capture:true});
 let S={pts:[]};try{S=JSON.parse(localStorage.getItem('routeS'))||S}catch(e){}
 S.ui=Object.assign({mode:'map',style:'anf',line:'solid',lbl:true,box:true,off:true},S.ui||{});
 const map=L.map('map',{zoomSnap:0.25}).setView([16.12,103.55],11);
