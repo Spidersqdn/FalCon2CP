@@ -549,9 +549,10 @@ function render(g,ro,other){const L_=legs(),n=S.pts.length,anf=S.ui.style==='anf
     const hd=l.crsTxt,rc=pad3(l.crsNum+180);
     // legs heading right of the PZ->LZ direction: turn the box 180° so text stays upright; head (HDG) end then sits on the right.
     // NM / time / ALT always read left to right in that order
-    // text reads upright when looking from PZ toward LZ (route's overall direction), not north-up
+    // text reads upright when looking from PZ toward LZ (route's overall direction), not north-up; the numbers run across the box,
+    // so the box turns 180° only for legs pointing more than 90° away from the PZ->LZ bearing
     const P0=S.pts[0],Pn=S.pts[S.pts.length-1],rb=P0&&Pn&&P0!==Pn?legCalc(P0,Pn).tc:0;
-    const flip=(((l.tc-rb)%360+360)%360<180)!==!!a.bfl,lt=flip?bo.t:bo.h,rt=flip?bo.h:bo.t,mid3=[NI[i]+' NM',hm(l.min),has(l.alt)?l.alt+"'":'-'];
+    const dd=((l.tc-rb)%360+360)%360,flip=(dd>90&&dd<270)!==!!a.bfl,lt=flip?bo.t:bo.h,rt=flip?bo.h:bo.t,mid3=[NI[i]+' NM',hm(l.min),has(l.alt)?l.alt+"'":'-'];
     const vals=mid3; // HDG / reciprocal live only in their triangles; a removed triangle drops its value too
     const cells=vals.map((t,k)=>`<div class="c${k===0&&!lt?' f':''}${k===vals.length-1&&rt?' l':''}" style="border-color:${bc}"><span>${esc(t)}</span></div>`).join('');
     const tipLen=Math.max(bo.h?String(hd).length:0,bo.t&&rc?rc.length:0);
