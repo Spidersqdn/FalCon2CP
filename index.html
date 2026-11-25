@@ -1284,4 +1284,6 @@ globSizes();setMode(S.ui.mode);routeBtns();setStyle(S.ui.style);setBase();togTxt
   function fit(){let h=innerHeight;if(st&&window.screen){const pt=innerHeight>=innerWidth,sh=pt?Math.max(screen.width,screen.height):Math.min(screen.width,screen.height);if(Math.abs(sh-h)<=120)h=Math.max(h,sh)}
     document.documentElement.style.setProperty('--app-h',h+'px');try{map.invalidateSize()}catch(e){}}
   fit();addEventListener('resize',fit);addEventListener('orientationchange',()=>setTimeout(fit,300))})();
+// start in paper view (มุมมองกระดาษ) by default
+setTimeout(()=>{if(!pvOn)pvToggle()},0);
 </script></body></html>
