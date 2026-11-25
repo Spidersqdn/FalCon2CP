@@ -31,7 +31,7 @@ body.hide #side{display:none}
 #dft .shd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}#dft .shd button{width:auto;margin:0;padding:4px 10px}
 #dft .sfm{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}#dft .sfm label{font-size:12px;color:var(--mu)}#dft .sfm label.w{grid-column:1/-1}#dft .sfm input{width:100%;margin-top:2px}
 #dft .sbt{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:8px 0}#dft .sbt button{margin:0}
-#dft .sbox{width:min(640px,100%)}#dft .sbt{grid-template-columns:1fr}#dft .sfm{grid-template-columns:1fr 1fr}
+#dft .sbox{width:min(640px,100%)}#dft .sbt{grid-template-columns:repeat(3,1fr)}#dft .sfm{grid-template-columns:1fr 1fr}
 @media (max-width:700px){#dft .zz{grid-template-columns:1fr 1fr}#dft .sbt{grid-template-columns:1fr 1fr}}
 @media (max-width:700px){#sld .sfm{grid-template-columns:1fr 1fr}#sld .sbt{grid-template-columns:1fr 1fr}}
 #pvw{position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,.6);display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:16px}
@@ -258,9 +258,9 @@ html{background:#232529}
   <div class="sm">TABLEs ซ้าย/ขวา</div><div id="txBox"></div>
   <ul class="wl" id="wpl"></ul>
  </fieldset>
- <fieldset><legend>ไฟล์</legend>
+ <fieldset><legend>FUNCTION</legend>
   <input type="file" id="imp" accept=".csv,.kml,.kmz,.gpx" hidden onchange="importFile(this.files[0]).catch(()=>alert('อ่านไฟล์ไม่ได้'));this.value=''">
-  <div class="b3" style="grid-template-columns:repeat(4,1fr)"><button class="pri" onclick="imp.click()" title="CSV / KML / KMZ / GPX">IMPORT</button><button onclick="$('expM').classList.toggle('on')">EXPORT ▾</button><button onclick="openSlide()" title="Mission Overview 16:9 PNG">SLIDE</button><button onclick="openDraft()" title="ดราฟแผนสมบูรณ์ Word 2 หน้า">WORD</button></div>
+  <div class="b3" style="grid-template-columns:repeat(4,1fr)"><button class="pri" onclick="imp.click()" title="CSV / KML / KMZ / GPX">IMPORT</button><button onclick="$('expM').classList.toggle('on')">EXPORT ▾</button><button onclick="openSlide()" title="Mission Overview 16:9 PNG">SLIDE</button><button onclick="openDraft()" title="ดราฟแผนสมบูรณ์ 2 หน้า: Word / PDF / PNG">DATA</button></div>
   <div id="expM" class="seg" style="margin:6px 0 0"><button onclick="expAs('kml')">KML</button><button onclick="expAs('kmz')">KMZ</button><button onclick="expAs('gpx')">GPX</button><button onclick="expAs('csv')">CSV</button></div>
   <div class="b3"><button onclick="undo()" title="Ctrl+Z">↶ UNDO</button><button onclick="reverseRoute()" title="กลับทิศเส้นทาง">⇄ BACK TRACK</button><button onclick="clearAll()">CLEAR</button></div>
  </fieldset>
@@ -1015,12 +1015,12 @@ function dfLoad(){let o={};try{o=JSON.parse(localStorage.getItem('draftF'))||{}}
 function dfSave(){const o={};DF_F.forEach(k=>o[k]=$('df_'+k).value);try{localStorage.setItem('draftF',JSON.stringify(o))}catch(e){}}
 function openDraft(){if(S.pts.length<2)return alert('ต้องมี waypoint อย่างน้อย 2 จุดก่อนทำดราฟแผน');
   if(!$('dft'))document.body.insertAdjacentHTML('beforeend',`<div id="dft"><div class="sbox">
-    <div class="shd"><b>ดราฟแผนสมบูรณ์ (Word 2 หน้า)</b><button onclick="$('dft').remove()">✕</button></div>
+    <div class="shd"><b>DATA · ดราฟแผนสมบูรณ์ 2 หน้า · เลือกชนิดไฟล์</b><button onclick="$('dft').remove()">✕</button></div>
     <div class="sfm"><label class="w">หัวเรื่อง<input id="df_ttl" onchange="dfSave()"></label>
       <label>FLIGHT ALT (ft)<input id="df_falt" inputmode="numeric" onchange="dfSave()"></label><label>สนามบินห่างเส้นทางไม่เกิน (NM)<input id="df_cor" inputmode="numeric" onchange="dfSave()"></label>
       <button class="w" id="df_apb" onclick="dfApFill()" style="grid-column:1/-1;margin:0">+ ใส่สนามบินระหว่างเส้นทางลง NOTE</button>
       <label class="w">NOTE (ขึ้นบรรทัดใหม่ได้)<textarea id="df_note" rows="6" onchange="dfSave()" style="width:100%;margin-top:2px;font:inherit"></textarea></label></div>
-    <div class="sbt"><button class="pri" id="df_go" onclick="draftDocx()">สร้างไฟล์ Word</button></div>
+    <div class="sbt"><button class="pri" id="df_docx" onclick="draftOut('docx')">Word (.docx)</button><button class="pri" id="df_pdf" onclick="draftOut('pdf')">PDF</button><button class="pri" id="df_png" onclick="draftOut('png')">PNG</button></div>
     <div style="font-size:12px;color:var(--mu)">ชื่อจุด/ระยะ/เวลา/HDG/SAFETY ALT ใช้ค่าเส้นทางหลักตามแผนที่ · แผนที่หน้า 1 = มุมมองแผนสมบูรณ์</div></div></div>`);
   const o=dfLoad();$('df_ttl').value=o.ttl??'เส้นทางบิน ขบวน ฮ.';$('df_falt').value=o.falt??'2000';$('df_cor').value=o.cor??'10';$('df_note').value=o.note??'';if(!o.note)dfApFill()}
 const dfX=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -1048,10 +1048,42 @@ async function dfAps(){await apLoad();const P=slRoute(),c=Math.max(0,+$('df_cor'
 async function dfApFill(){const b=$('df_apb'),t=b.textContent;b.textContent='กำลังค้นหา…';try{const s=await dfAps();
   if(!s)return alert('ไม่พบสนามบินในระยะ '+($('df_cor').value||0)+' NM จากเส้นทาง');const n=$('df_note');n.value=s+(n.value.trim()?'\n'+n.value:'');dfSave()}
   catch(e){alert('โหลดข้อมูลสนามบินไม่ได้: '+e.message)}finally{b.textContent=t}}
-async function draftDocx(){const b=$('df_go');if(b.disabled)return;dfSave();b.disabled=true;const bt=b.textContent;b.textContent='กำลังสร้าง…';
+const dfName=x=>{const d=new Date(),p=n=>String(n).padStart(2,'0');return `DraftPlan_${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${x.startsWith('-')?x:'.'+x}`};
+// iPhone/iPad: share sheet (save to Files / LINE ...); others: download
+async function dfSend(F,ttl){if(/iP(hone|ad|od)|Macintosh/.test(navigator.userAgent)&&'ontouchend' in document&&navigator.canShare&&navigator.canShare({files:F})){
+    try{return await navigator.share({files:F,title:ttl})}catch(e){if(e.name==='AbortError')return}}
+  for(const f of F){dlBlob(f.name,f);await new Promise(r=>setTimeout(r,400))}}
+// PDF / PNG: the same 2 pages laid out as A4 HTML (794x1123 px) and captured
+async function dfImg(k,D,ttl,fa,cv){if(!window.html2canvas)await loadJS('lib/html2canvas.min.js');if(k==='pdf'&&!window.jspdf)await loadJS('lib/jspdf.umd.min.js');
+  await slFontReady();const c=document.createElement('canvas').getContext('2d');slDetect(c);const pt=v=>(v*96/72/(slK>1?1:1.3)).toFixed(1)+'px'; // TH SarabunPSK 18/16 pt; without it MapSar (Sarabun, ~1.3x wider) is scaled to the same look
+  const F18=pt(18),F16=pt(16),x=dfX,note=$('df_note').value.replace(/\r/g,'');
+  const td=(t,o='')=>`<td style="${o}">${x(t)}</td>`,TS='width:100%;border-collapse:collapse;font-size:'+F16,CS='td{font-family:'+SL_FONT.replace(/"/g,"'")+';font-size:'+F16+';line-height:1.45;border:1px solid #000;padding:3px 6px;text-align:center;white-space:nowrap;vertical-align:middle}td.l{text-align:left;white-space:normal}';
+  const head=`<div style="text-align:center;font-weight:bold;text-decoration:underline;margin-bottom:10px">${x(ttl)}</div>
+    <div><span class="k">ตำบลต้นทาง</span>: ${x(D.from)}</div><div><span class="k">ตำบลปลายทาง</span>: ${x(D.to)}</div>
+    <div><span class="k">ระยะทาง</span>: ${D.T} ไมล์ทะเล<span style="display:inline-block;width:${360-127-110}px"></span><span class="k" style="width:120px">ใช้เวลาบิน</span>:&nbsp; ${D.TM} นาที</div><div style="height:14px"></div>`;
+  const pg=(i,body)=>`<div id="dfPg${i}" style="position:absolute;left:-30000px;top:0;width:794px;height:1123px;box-sizing:border-box;padding:76px 57px;background:#fff;color:#000;font-size:${F18};line-height:1.45;font-family:${SL_FONT.replace(/"/g,"'")}">
+    <style>#dfPg${i} .k{display:inline-block;width:127px}#dfPg${i} ${CS.replace(/}td/,'}#dfPg'+i+' td')}</style>${head}${body}</div>`;
+  const cp=`<table style="${TS}"><tr>${td('CP','')}${td('STATION')}${td('HDG')}<td colspan="2">DISTANCE (NM)</td><td colspan="2">TIME (MIN)</td><td rowspan="2">FLIGHT<br>ALT.</td><td rowspan="2">SAFETY<br>ALT.</td></tr>
+    <tr>${['ROUTE','REMAIN','ROUTE','REMAIN'].map(t=>td(t)).join('')}</tr>${D.rows.map(r=>`<tr>${td(r.lab)}<td class="l">${x(r.name)}</td>${td(r.hdg)}${td(r.dR)}${td(r.dM)}${td(r.tR)}${td(r.tM)}${td(fa)}${td(r.sa)}</tr>`).join('')}</table>`
+    .replace('<tr><td style="">CP</td><td style="">STATION</td><td style="">HDG</td>','<tr><td rowspan="2">CP</td><td rowspan="2">STATION</td><td rowspan="2">HDG</td>');
+  const co=`<table style="${TS}">${D.rows.map(r=>`<tr>${td(r.lab)}<td class="l">${x(r.name)}</td>${td(dfDM(r.p.lat,'NS'))}${td(dfDM(r.p.lon,'EW'))}${td(mgrs(r.p.lat,r.p.lon))}</tr>`).join('')}
+    <tr><td colspan="5" class="l" style="white-space:pre-wrap;tab-size:48px;-moz-tab-size:48px">NOTE :\n${x(note)}</td></tr></table>`;
+  const box=document.createElement('div');box.innerHTML=pg(0,`<img src="${cv.toDataURL('image/jpeg',0.92)}" style="width:100%;display:block;border:1px solid #000">`)
+    +pg(1,cp+`<div style="height:28px"></div><div style="text-align:center;font-weight:bold;text-decoration:underline;margin-bottom:8px">พิกัดสนาม ฮ. และจุดรายงาน</div>`+co);
+  document.body.appendChild(box);
+  try{await Promise.all([...box.querySelectorAll('img')].map(i=>i.decode?i.decode().catch(()=>{}):0));
+    const C=[];for(let i=0;i<2;i++)C.push(await html2canvas($('dfPg'+i),{scale:2.5,useCORS:true,backgroundColor:'#fff',logging:false,onclone:d=>{d.getElementById('dfPg'+i).style.left='0'}}));
+    if(k==='pdf'){const pdf=new jspdf.jsPDF({unit:'mm',format:'a4',orientation:'p',compress:true});
+      C.forEach((c,i)=>{if(i)pdf.addPage();pdf.addImage(c.toDataURL('image/jpeg',0.92),'JPEG',0,0,210,297)});
+      return await dfSend([new File([pdf.output('blob')],dfName('pdf'),{type:'application/pdf'})],ttl)}
+    const bl=await Promise.all(C.map(c=>new Promise((ok,no)=>c.toBlob(b=>b?ok(b):no(new Error('png')),'image/png'))));
+    await dfSend(bl.map((b,i)=>new File([b],dfName('-p'+(i+1)+'.png'),{type:'image/png'})),ttl)}
+  finally{box.remove()}}
+async function draftOut(k){const B=[...document.querySelectorAll('#dft .sbt button')];if(B.some(x=>x.disabled))return;dfSave();B.forEach(x=>x.disabled=true);const b=$('df_'+k),bt=b.textContent;b.textContent='กำลังสร้าง…';
   try{const D=dfData(),ttl=$('df_ttl').value.trim()||'เส้นทางบิน ขบวน ฮ.',fa=dfN($('df_falt').value),TW=10206; // A4, 1.5 cm margins -> 10206 twips text width
     // map image 16:9 = the app's map in แผนที่แผนสมบูรณ์ style (same renderer as SLIDE)
     const cv=document.createElement('canvas');cv.width=3200;cv.height=1800;const c=cv.getContext('2d');c.setTransform(2,0,0,2,0,0);await slMap(c,0,0,1600,900);
+    if(k!=='docx')return await dfImg(k,D,ttl,fa,cv);
     const png=await new Promise((ok,no)=>cv.toBlob(x=>x?ok(x):no(new Error('png')),'image/png'));
     const TB=[1900,2100,5400,6600,6900];
     const head=dfP(ttl,{jc:'center',b:1,u:1,after:160})+dfP(`ตำบลต้นทาง\t: ${D.from}`,{tabs:TB})+dfP(`ตำบลปลายทาง\t: ${D.to}`,{tabs:TB})
@@ -1075,11 +1107,10 @@ async function draftDocx(){const b=$('df_go');if(b.disabled)return;dfSave();b.di
     z.file('word/styles.xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="${F}" w:hAnsi="${F}" w:eastAsia="${F}" w:cs="${F}"/><w:sz w:val="36"/><w:szCs w:val="36"/><w:lang w:val="en-US" w:bidi="th-TH"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style></w:styles>`);
     z.file('word/document.xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ${NS}><w:body>${body}</w:body></w:document>`);
     z.file('word/media/map.png',png);
-    const blob=await z.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}),fn=`DraftPlan_${new Date().toISOString().slice(0,16).replace(/\D/g,'')}.docx`;
-    const f=new File([blob],fn,{type:blob.type});
-    if(/iP(hone|ad|od)|Macintosh/.test(navigator.userAgent)&&'ontouchend' in document&&navigator.canShare&&navigator.canShare({files:[f]}))await navigator.share({files:[f],title:ttl}).catch(e=>{if(e.name!=='AbortError')dlBlob(fn,blob)});else dlBlob(fn,blob)}
-  catch(e){alert('สร้างไฟล์ Word ไม่ได้: '+e.message)}
-  finally{b.disabled=false;b.textContent=bt}}
+    const blob=await z.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}),fn=dfName('docx');
+    await dfSend([new File([blob],fn,{type:blob.type})],ttl)}
+  catch(e){alert('สร้างไฟล์ไม่ได้: '+e.message)}
+  finally{B.forEach(x=>x.disabled=false);b.textContent=bt}}
 // ---- Export Map: tiles of paper at true scale (print / save as PDF) ----
 const PAPER={A4:[210,297],A3:[297,420]},MERC=L.CRS.EPSG3857,M0=2*Math.PI*6378137/256; // m/px at z0, equator
 let pmSrc=null,prShow=false,prMaps=[];const pgGrp=L.layerGroup().addTo(map);
