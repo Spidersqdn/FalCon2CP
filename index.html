@@ -714,7 +714,7 @@ function list(L_,tot,tmin){
 // reverse: leg data (box pos, overrides, alt, box style) belongs to the leg's start point, so shift it to the new start
 function revPts(){const n=S.pts.length;if(n<2)return;
   const legd=S.pts.slice(0,-1).map(p=>({box:p.box,boff:p.boff,poff:p.poff,psc:p.psc,ph:p.ph,ov:p.ov?{...p.ov,crs:''}:undefined,alt:p.alt,bx:p.bx,bsc:p.bsc,ln:p.ln,lw:p.lw}));
-  S.pts.reverse();S.pts.forEach(p=>{if(p.tf==='PZ')p.tf='LZ';else if(p.tf==='LZ')p.tf='PZ'}); // chosen PZ/LZ swap ends too
+  S.pts.reverse();S.pts.forEach(p=>{delete p.bfl;if(p.tf==='PZ')p.tf='LZ';else if(p.tf==='LZ')p.tf='PZ'}); // chosen PZ/LZ swap ends too; DOG LEG 180° flips reset -> boxes face the new PZ->LZ
   S.pts.forEach((p,j)=>{const d=j<n-1?legd[n-2-j]:{box:undefined,boff:undefined,poff:undefined,psc:undefined,ph:undefined,ov:undefined,alt:'',bx:undefined,bsc:undefined,ln:undefined,lw:undefined};Object.assign(p,d)});
   const f=S.pts[0],z=S.pts[n-1];if(kind(f.type)==='LZ'&&kind(z.type)==='PZ'){f.type='PZ'+f.type.slice(2);z.type='LZ'+z.type.slice(2);[f.lcol,z.lcol]=[z.lcol,f.lcol];const dc=[COL.PZ,COL.LZ].map(c=>c.toLowerCase());[f,z].forEach(p=>{if(p.lcol==null||dc.includes(String(p.lcol).toLowerCase()))delete p.lcol})}
 }
@@ -966,10 +966,12 @@ function slTxt(c,t,x,y,sz,o={}){c.font=`${o.b?'bold ':''}${Math.round(sz*slK)}px
   const asc=c.measureText('Hก').actualBoundingBoxAscent||sz*slK*.7,w=c.measureText(t).width,x0=o.al==='l'?x:o.al==='r'?x-w:x-w/2,y0=y+asc/2;
   if(o.halo){c.lineJoin='round';c.lineWidth=o.halo;c.strokeStyle='rgba(0,0,0,.85)';c.strokeText(t,x0,y0)}c.fillStyle=o.col||'#fff';c.fillText(t,x0,y0);return w}
 // map panel = the app's own map in "แผนที่แผนสมบูรณ์" style (labels, tables, DOG LEGs), rendered off-screen and captured
-async function slMap(c,X,Y,W,H){if(!window.html2canvas)await loadJS('lib/html2canvas.min.js');
+// fitW (DATA): zoom so the route spans about fitW px -> tables readable on A4
+async function slMap(c,X,Y,W,H,fitW){if(!window.html2canvas)await loadJS('lib/html2canvas.min.js');
   const box=document.createElement('div');box.id='slMapBox';// size the off-screen map so the route fits at the SAME zoom as the screen -> symbols/tables keep the on-screen proportion
   const P=allPts().length?allPts():S.pts,LB=L.latLngBounds(P.map(p=>[p.lat,p.lon]));let z=map.getZoom();
-  const pa=map.project(LB.getNorthWest(),z),pb=map.project(LB.getSouthEast(),z);
+  let pa=map.project(LB.getNorthWest(),z),pb=map.project(LB.getSouthEast(),z);
+  if(fitW){z+=Math.log2(Math.min((fitW-420)/Math.max(1,pb.x-pa.x),(fitW*H/W-320)/Math.max(1,pb.y-pa.y)));z=Math.min(z,(map.getMaxZoom()||18));pa=map.project(LB.getNorthWest(),z);pb=map.project(LB.getSouthEast(),z)}
   let bw=Math.max(pb.x-pa.x+300,W),bh=Math.max(pb.y-pa.y+250,H);if(bw/bh<W/H)bw=bh*W/H;else bh=bw*H/W;
   const MAXW=3000;if(bw>MAXW){z+=Math.log2(MAXW/bw);bh*=MAXW/bw;bw=MAXW}
   box.style.cssText=`position:absolute;left:-30000px;top:0;width:${Math.round(bw)}px;height:${Math.round(bh)}px;background:#fff`;document.body.appendChild(box);
@@ -981,6 +983,13 @@ async function slMap(c,X,Y,W,H){if(!window.html2canvas)await loadJS('lib/html2ca
     if(S.ui.airports){await apLoad();apDraw(L.layerGroup().addTo(m),false)}
     const st=S.ui.style;S.ui.style='cp';try{drawRoutes(L.layerGroup().addTo(m),true)}finally{S.ui.style=st}
     await ok;await new Promise(r=>setTimeout(r,300));
+    // grow the frame so every PZ/CP/LZ table, label and DOG LEG box is fully inside (they keep their pixel size, so a big route can push them past the edge)
+    {const br=box.getBoundingClientRect(),U=[0,0,bw,bh],pd=24;box.querySelectorAll('.leaflet-marker-pane *').forEach(e=>{const r=e.getBoundingClientRect();if(!r.width||!r.height)return;
+        U[0]=Math.min(U[0],r.left-br.left-pd);U[1]=Math.min(U[1],r.top-br.top-pd);U[2]=Math.max(U[2],r.right-br.left+pd);U[3]=Math.max(U[3],r.bottom-br.top+pd)});
+      let nw=U[2]-U[0],nh=U[3]-U[1];if(nw>bw+1||nh>bh+1){if(nw/nh<W/H)nw=nh*W/H;else nh=nw*H/W;
+        const ll=m.containerPointToLatLng([(U[0]+U[2])/2,(U[1]+U[3])/2]);bw=nw;bh=nh;box.style.width=Math.round(bw)+'px';box.style.height=Math.round(bh)+'px';
+        m.invalidateSize(false);m.setView(ll,m.getZoom(),{animate:false});await new Promise(r=>setTimeout(r,60));
+        if(lay.isLoading&&lay.isLoading())await new Promise(res=>{const t=setTimeout(res,30000);lay.once('load',()=>{clearTimeout(t);res()})});await new Promise(r=>setTimeout(r,300))}}
     const cv=await html2canvas(box,{scale:Math.min(2,2*W/bw),useCORS:true,backgroundColor:'#fff',logging:false,onclone:d=>{d.body.classList.add('pdfcap');d.getElementById('slMapBox').style.left='0'}});
     c.drawImage(cv,X,Y,W,H)}
   catch(e){c.fillStyle='#dfe3e8';c.fillRect(X,Y,W,H)}
@@ -1007,7 +1016,7 @@ function slName(){const [d,e]=($('sl_code').value||'').split('-').map(s=>s.trim(
 const slBlob=()=>new Promise((ok,no)=>{try{$('slC').toBlob(b=>b?ok(b):no(new Error('blob')),'image/png')}catch(e){no(e)}});
 async function slPng(){try{dlBlob(slName(),await slBlob())}catch(e){alert('บันทึก PNG ไม่ได้: '+e.message)}}
 async function slShare(){try{const f=new File([await slBlob()],slName(),{type:'image/png'});
-  if(navigator.canShare&&navigator.canShare({files:[f]}))await navigator.share({files:[f],title:'Mission Overview'});else{dlBlob(f.name,f);alert('อุปกรณ์นี้แชร์ไฟล์ไม่ได้ จึงบันทึกเป็นไฟล์แทน')}}
+  if(navigator.canShare&&navigator.canShare({files:[f]}))await navigator.share({files:[f]});else{dlBlob(f.name,f);alert('อุปกรณ์นี้แชร์ไฟล์ไม่ได้ จึงบันทึกเป็นไฟล์แทน')}}
   catch(e){if(e.name!=='AbortError')alert('แชร์ไม่ได้: '+e.message)}}
 // ---- DRAFT PLAN: 2-page Word (.docx) "เส้นทางบิน ขบวน ฮ." (p.1 header + map, p.2 header + CP table + coordinates + NOTE) ----
 const DF_F=['ttl','falt','cor','note'];
@@ -1055,7 +1064,7 @@ async function dfApFill(){const b=$('df_apb'),t=b.textContent;b.textContent='ก
 const dfName=x=>{const d=new Date(),p=n=>String(n).padStart(2,'0');return `DraftPlan_${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${x.startsWith('-')?x:'.'+x}`};
 // iPhone/iPad: share sheet (save to Files / LINE ...); others: download
 async function dfSend(F,ttl){if(/iP(hone|ad|od)|Macintosh/.test(navigator.userAgent)&&'ontouchend' in document&&navigator.canShare&&navigator.canShare({files:F})){
-    try{return await navigator.share({files:F,title:ttl})}catch(e){if(e.name==='AbortError')return}}
+    try{return await navigator.share({files:F})}catch(e){if(e.name==='AbortError')return}}
   for(const f of F){dlBlob(f.name,f);await new Promise(r=>setTimeout(r,400))}}
 // PDF / PNG: the same 2 pages laid out as A4 HTML (794x1123 px) and captured
 async function dfImg(k,D,ttl,fa,cv){if(!window.html2canvas)await loadJS('lib/html2canvas.min.js');if(k==='pdf'&&!window.jspdf)await loadJS('lib/jspdf.umd.min.js');
@@ -1086,7 +1095,7 @@ async function dfImg(k,D,ttl,fa,cv){if(!window.html2canvas)await loadJS('lib/htm
 async function draftOut(k){const B=[...document.querySelectorAll('#dft .sbt button')];if(B.some(x=>x.disabled))return;dfSave();B.forEach(x=>x.disabled=true);const b=$('df_'+k),bt=b.textContent;b.textContent='กำลังสร้าง…';
   try{const D=dfData(),ttl=$('df_ttl').value.trim()||'เส้นทางบิน ขบวน ฮ.',fa=dfN($('df_falt').value),TW=10206; // A4, 1.5 cm margins -> 10206 twips text width
     // map image 16:9 = the app's map in แผนที่แผนสมบูรณ์ style (same renderer as SLIDE)
-    const cv=document.createElement('canvas');cv.width=3200;cv.height=1800;const c=cv.getContext('2d');c.setTransform(2,0,0,2,0,0);await slMap(c,0,0,1600,900);
+    const cv=document.createElement('canvas');cv.width=3200;cv.height=1800;const c=cv.getContext('2d');c.setTransform(2,0,0,2,0,0);await slMap(c,0,0,1600,900,1500);
     if(k!=='docx')return await dfImg(k,D,ttl,fa,cv);
     const png=await new Promise((ok,no)=>cv.toBlob(x=>x?ok(x):no(new Error('png')),'image/png'));
     const TB=[1900,2100,5400,6600,6900];
