@@ -966,14 +966,15 @@ function slTxt(c,t,x,y,sz,o={}){c.font=`${o.b?'bold ':''}${Math.round(sz*slK)}px
   const asc=c.measureText('Hก').actualBoundingBoxAscent||sz*slK*.7,w=c.measureText(t).width,x0=o.al==='l'?x:o.al==='r'?x-w:x-w/2,y0=y+asc/2;
   if(o.halo){c.lineJoin='round';c.lineWidth=o.halo;c.strokeStyle='rgba(0,0,0,.85)';c.strokeText(t,x0,y0)}c.fillStyle=o.col||'#fff';c.fillText(t,x0,y0);return w}
 // map panel = the app's own map in "แผนที่แผนสมบูรณ์" style (labels, tables, DOG LEGs), rendered off-screen and captured
-// fitW (DATA): zoom so the route spans about fitW px -> tables readable on A4
+// fitW: number = zoom so the route spans about fitW px; 'paper' (DATA) = paper-view print scale and the current map style
 async function slMap(c,X,Y,W,H,fitW){if(!window.html2canvas)await loadJS('lib/html2canvas.min.js');
   const box=document.createElement('div');box.id='slMapBox';// size the off-screen map so the route fits at the SAME zoom as the screen -> symbols/tables keep the on-screen proportion
   const P=allPts().length?allPts():S.pts,LB=L.latLngBounds(P.map(p=>[p.lat,p.lon]));let z=map.getZoom();
   let pa=map.project(LB.getNorthWest(),z),pb=map.project(LB.getSouthEast(),z);
-  if(fitW){z+=Math.log2(Math.min((fitW-420)/Math.max(1,pb.x-pa.x),(fitW*H/W-320)/Math.max(1,pb.y-pa.y)));z=Math.min(z,(map.getMaxZoom()||18));pa=map.project(LB.getNorthWest(),z);pb=map.project(LB.getSouthEast(),z)}
-  let bw=Math.max(pb.x-pa.x+300,W),bh=Math.max(pb.y-pa.y+250,H);if(bw/bh<W/H)bw=bh*W/H;else bh=bw*H/W;
-  const MAXW=3000;if(bw>MAXW){z+=Math.log2(MAXW/bw);bh*=MAXW/bw;bw=MAXW}
+  const paper=fitW==='paper';if(paper){z=zoomFor(LB.getCenter().lat,prCfg().S);pa=map.project(LB.getNorthWest(),z);pb=map.project(LB.getSouthEast(),z)} // DATA: same print scale as paper view
+  else if(fitW){z+=Math.log2(Math.min((fitW-420)/Math.max(1,pb.x-pa.x),(fitW*H/W-320)/Math.max(1,pb.y-pa.y)));z=Math.min(z,(map.getMaxZoom()||18));pa=map.project(LB.getNorthWest(),z);pb=map.project(LB.getSouthEast(),z)}
+  const mw=paper?W*0.55:W,mh=paper?H*0.55:H;let bw=Math.max(pb.x-pa.x+300,mw),bh=Math.max(pb.y-pa.y+250,mh);if(bw/bh<W/H)bw=bh*W/H;else bh=bw*H/W;
+  const MAXW=paper?4500:3000;if(bw>MAXW){z+=Math.log2(MAXW/bw);bh*=MAXW/bw;bw=MAXW}
   box.style.cssText=`position:absolute;left:-30000px;top:0;width:${Math.round(bw)}px;height:${Math.round(bh)}px;background:#fff`;document.body.appendChild(box);
   const m=L.map(box,{preferCanvas:true,zoomControl:false,attributionControl:false,zoomSnap:0,fadeAnimation:false,zoomAnimation:false,markerZoomAnimation:false,
     dragging:false,scrollWheelZoom:false,doubleClickZoom:false,boxZoom:false,keyboard:false,touchZoom:false});
@@ -981,7 +982,7 @@ async function slMap(c,X,Y,W,H,fitW){if(!window.html2canvas)await loadJS('lib/ht
     const src=tileSrc(),lay=new HiRes({tileSize:128,src,maxNativeZoom:src.max-1,minNativeZoom:Math.max(0,src.min-1),keepBuffer:0,updateWhenIdle:false});
     const ok=new Promise(res=>{const t=setTimeout(res,30000);lay.once('load',()=>{clearTimeout(t);res()})});lay.addTo(m);
     if(S.ui.airports){await apLoad();apDraw(L.layerGroup().addTo(m),false)}
-    const st=S.ui.style;S.ui.style='cp';try{drawRoutes(L.layerGroup().addTo(m),true)}finally{S.ui.style=st}
+    const st=S.ui.style;if(!paper)S.ui.style='cp';try{drawRoutes(L.layerGroup().addTo(m),true)}finally{S.ui.style=st}
     await ok;await new Promise(r=>setTimeout(r,300));
     // grow the frame so every PZ/CP/LZ table, label and DOG LEG box is fully inside (they keep their pixel size, so a big route can push them past the edge)
     {const br=box.getBoundingClientRect(),U=[0,0,bw,bh],pd=24;box.querySelectorAll('.leaflet-marker-pane *').forEach(e=>{const r=e.getBoundingClientRect();if(!r.width||!r.height)return;
@@ -990,7 +991,7 @@ async function slMap(c,X,Y,W,H,fitW){if(!window.html2canvas)await loadJS('lib/ht
         const ll=m.containerPointToLatLng([(U[0]+U[2])/2,(U[1]+U[3])/2]);bw=nw;bh=nh;box.style.width=Math.round(bw)+'px';box.style.height=Math.round(bh)+'px';
         m.invalidateSize(false);m.setView(ll,m.getZoom(),{animate:false});await new Promise(r=>setTimeout(r,60));
         if(lay.isLoading&&lay.isLoading())await new Promise(res=>{const t=setTimeout(res,30000);lay.once('load',()=>{clearTimeout(t);res()})});await new Promise(r=>setTimeout(r,300))}}
-    const cv=await html2canvas(box,{scale:Math.min(2,2*W/bw),useCORS:true,backgroundColor:'#fff',logging:false,onclone:d=>{d.body.classList.add('pdfcap');d.getElementById('slMapBox').style.left='0'}});
+    const cv=await html2canvas(box,{scale:Math.min(paper?3:2,2*W/bw),useCORS:true,backgroundColor:'#fff',logging:false,onclone:d=>{d.body.classList.add('pdfcap');d.getElementById('slMapBox').style.left='0'}});
     c.drawImage(cv,X,Y,W,H)}
   catch(e){c.fillStyle='#dfe3e8';c.fillRect(X,Y,W,H)}
   finally{m.remove();box.remove()}
@@ -1096,7 +1097,7 @@ async function dfImg(k,D,ttl,fa,cv){if(!window.html2canvas)await loadJS('lib/htm
 async function draftOut(k){const B=[...document.querySelectorAll('#dft .sbt button')];if(B.some(x=>x.disabled))return;dfSave();B.forEach(x=>x.disabled=true);const b=$('df_'+k),bt=b.textContent;b.textContent='กำลังสร้าง…';
   try{const D=dfData(),ttl=$('df_ttl').value.trim()||'เส้นทางบิน ขบวน ฮ.',fa=dfN($('df_falt').value),TW=10206; // A4, 1.5 cm margins -> 10206 twips text width
     // map image 16:9 = the app's map in แผนที่แผนสมบูรณ์ style (same renderer as SLIDE)
-    const cv=document.createElement('canvas');cv.width=3200;cv.height=1800;const c=cv.getContext('2d');c.setTransform(2,0,0,2,0,0);await slMap(c,0,0,1600,900,1500);
+    const cv=document.createElement('canvas');cv.width=3200;cv.height=1800;const c=cv.getContext('2d');c.setTransform(2,0,0,2,0,0);await slMap(c,0,0,1600,900,'paper');
     if(k!=='docx')return await dfImg(k,D,ttl,fa,cv);
     const png=await new Promise((ok,no)=>cv.toBlob(x=>x?ok(x):no(new Error('png')),'image/png'));
     const TB=[1900,2100,5400,6600,6900];
