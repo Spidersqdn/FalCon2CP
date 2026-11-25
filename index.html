@@ -1010,18 +1010,19 @@ async function slShare(){try{const f=new File([await slBlob()],slName(),{type:'i
   if(navigator.canShare&&navigator.canShare({files:[f]}))await navigator.share({files:[f],title:'Mission Overview'});else{dlBlob(f.name,f);alert('อุปกรณ์นี้แชร์ไฟล์ไม่ได้ จึงบันทึกเป็นไฟล์แทน')}}
   catch(e){if(e.name!=='AbortError')alert('แชร์ไม่ได้: '+e.message)}}
 // ---- DRAFT PLAN: 2-page Word (.docx) "เส้นทางบิน ขบวน ฮ." (p.1 header + map, p.2 header + CP table + coordinates + NOTE) ----
-const DF_F=['ttl','falt','note'];
+const DF_F=['ttl','falt','cor','note'];
 function dfLoad(){let o={};try{o=JSON.parse(localStorage.getItem('draftF'))||{}}catch(e){}return o}
 function dfSave(){const o={};DF_F.forEach(k=>o[k]=$('df_'+k).value);try{localStorage.setItem('draftF',JSON.stringify(o))}catch(e){}}
 function openDraft(){if(S.pts.length<2)return alert('ต้องมี waypoint อย่างน้อย 2 จุดก่อนทำดราฟแผน');
   if(!$('dft'))document.body.insertAdjacentHTML('beforeend',`<div id="dft"><div class="sbox">
     <div class="shd"><b>ดราฟแผนสมบูรณ์ (Word 2 หน้า)</b><button onclick="$('dft').remove()">✕</button></div>
     <div class="sfm"><label class="w">หัวเรื่อง<input id="df_ttl" onchange="dfSave()"></label>
-      <label>FLIGHT ALT (ft)<input id="df_falt" inputmode="numeric" onchange="dfSave()"></label>
+      <label>FLIGHT ALT (ft)<input id="df_falt" inputmode="numeric" onchange="dfSave()"></label><label>สนามบินห่างเส้นทางไม่เกิน (NM)<input id="df_cor" inputmode="numeric" onchange="dfSave()"></label>
+      <button class="w" id="df_apb" onclick="dfApFill()" style="grid-column:1/-1;margin:0">+ ใส่สนามบินระหว่างเส้นทางลง NOTE</button>
       <label class="w">NOTE (ขึ้นบรรทัดใหม่ได้)<textarea id="df_note" rows="6" onchange="dfSave()" style="width:100%;margin-top:2px;font:inherit"></textarea></label></div>
     <div class="sbt"><button class="pri" id="df_go" onclick="draftDocx()">สร้างไฟล์ Word</button></div>
     <div style="font-size:12px;color:var(--mu)">ชื่อจุด/ระยะ/เวลา/HDG/SAFETY ALT ใช้ค่าเส้นทางหลักตามแผนที่ · แผนที่หน้า 1 = มุมมองแผนสมบูรณ์</div></div></div>`);
-  const o=dfLoad();$('df_ttl').value=o.ttl??'เส้นทางบิน ขบวน ฮ.';$('df_falt').value=o.falt??'2000';$('df_note').value=o.note??''}
+  const o=dfLoad();$('df_ttl').value=o.ttl??'เส้นทางบิน ขบวน ฮ.';$('df_falt').value=o.falt??'2000';$('df_cor').value=o.cor??'10';$('df_note').value=o.note??'';if(!o.note)dfApFill()}
 const dfX=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const dfN=v=>{const n=+String(v).replace(/,/g,'');return String(v).trim()===''?'-':isNaN(n)?String(v):Math.round(n).toLocaleString('en-US')};
 function dfDM(v,h){v=+v;const a=Math.abs(v);let d=Math.floor(a),m=+((a-d)*60).toFixed(3);if(m>=60){d++;m=0}return d+'° '+m.toFixed(3).padStart(6,'0')+"'"+(v<0?h[1]:h[0])}
@@ -1035,6 +1036,18 @@ function dfData(){const P=slRoute(),L_=slLegs(),NI=nmInt(L_.map(l=>l.nm)),T=NI.r
   const rows=P.map((p,i)=>{const l=i?L_[i-1]:null;if(l){dn+=NI[i-1];tm+=Math.round(l.min)}const last=i===P.length-1,sa=(l||L_[0]||{}).alt;
     return {lab:lab(p),name:nm(p),hdg:l?String(l.crsTxt):'-',dR:l?String(NI[i-1]):'-',dM:last?'-':String(T-dn),tR:l?String(Math.round(l.min)):'-',tM:last?'-':String(TM-tm),sa:has(sa)?dfN(sa):'-',p}});
   return {P,rows,T,TM,from:nm(P[0]),to:nm(P[P.length-1])}}
+// airports within c NM of the primary route, ordered along the route; NOTE lines "VTUV\t: TWR 119.75   APP 125.4 ..." (freqs from AD.txt)
+async function dfAps(){await apLoad();const P=slRoute(),c=Math.max(0,+$('df_cor').value||0),k=Math.cos(P[0].lat*Math.PI/180),out=[];let cum=0;
+  const seg=P.slice(1).map((b,i)=>{const a=P[i],s={a,b,s0:cum,nm:legCalc(a,b).nm};cum+=s.nm;return s});
+  (AP||[]).filter(q=>q.k==='AD'||q.k==='ARMY').forEach(q=>{let best=null;seg.forEach(g=>{const ax=g.a.lon*k*60,ay=g.a.lat*60,dx=g.b.lon*k*60-ax,dy=g.b.lat*60-ay,L2=dx*dx+dy*dy,
+      t=L2?Math.max(0,Math.min(1,((q.lon*k*60-ax)*dx+(q.lat*60-ay)*dy)/L2)):0,d=Math.hypot(q.lon*k*60-ax-dx*t,q.lat*60-ay-dy*t);if(!best||d<best.d)best={d,al:g.s0+g.nm*t}});
+    if(best&&best.d<=c)out.push({q,...best})});
+  out.sort((x,y)=>x.al-y.al);
+  return out.map(({q})=>{const id=q.id||q.n,f=(q.id&&AD&&AD[q.id])||[],ln=[];for(let i=0;i<f.length;i+=3)ln.push(f.slice(i,i+3).join('   '));
+    return ln.length?id+'\t: '+ln.join('\n\t  '):id+(q.id&&q.n?'\t: '+q.n:'')}).join('\n')}
+async function dfApFill(){const b=$('df_apb'),t=b.textContent;b.textContent='กำลังค้นหา…';try{const s=await dfAps();
+  if(!s)return alert('ไม่พบสนามบินในระยะ '+($('df_cor').value||0)+' NM จากเส้นทาง');const n=$('df_note');n.value=s+(n.value.trim()?'\n'+n.value:'');dfSave()}
+  catch(e){alert('โหลดข้อมูลสนามบินไม่ได้: '+e.message)}finally{b.textContent=t}}
 async function draftDocx(){const b=$('df_go');if(b.disabled)return;dfSave();b.disabled=true;const bt=b.textContent;b.textContent='กำลังสร้าง…';
   try{const D=dfData(),ttl=$('df_ttl').value.trim()||'เส้นทางบิน ขบวน ฮ.',fa=dfN($('df_falt').value),TW=10206; // A4, 1.5 cm margins -> 10206 twips text width
     // map image 16:9 = the app's map in แผนที่แผนสมบูรณ์ style (same renderer as SLIDE)
