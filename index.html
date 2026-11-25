@@ -215,12 +215,10 @@ html{background:#232529}
   <label><input type="checkbox" id="offl" checked onchange="save()"> เก็บแผนที่ที่เปิดดูไว้ใช้ offline</label>
   <div class="row" style="gap:6px;margin:4px 0"><button class="pri" onclick="lmPick()">📁 IMPORT MAP</button><button id="lmDel" onclick="lmDel()" style="display:none;flex:0 0 auto" title="ลบแผนที่นี้ออกจากเครื่อง">ลบ</button></div>
   <input type="file" id="lmIn" accept=".pmtiles" multiple style="display:none" onchange="lmAdd(this.files);this.value=''">
-  <div class="sm" id="lmInfo">เปิดไฟล์แผนที่จากเครื่องโดยตรง ไม่คัดลอกไฟล์ ใช้ได้โดยไม่ต้องมีเน็ต</div>
+  <div class="sm" id="lmInfo"></div>
   <div class="sm" id="cacheInfo">-</div>
-  <button onclick="clearCache()">ล้าง cache แผนที่</button>
-  <select id="elvZ" style="width:100%"><option value="11">Elevation ทั้งประเทศ · ปกติ (~190 MB)</option><option value="12">Elevation ทั้งประเทศ · ละเอียด (~750 MB)</option></select>
-  <button id="elvB" onclick="elvDl()">⛰ โหลด Elevation ทั้งหมด (ใช้ offline)</button>
-  <div class="sm" id="elvInfo">เก็บข้อมูลความสูงทั้งพื้นที่แผนที่ (ไทยและรอบข้าง) ไว้ในเครื่อง ใช้ทำ Elevation Profile / ความสูงบินอัตโนมัติตอนไม่มีเน็ต · โหลดค้างไว้ได้ กดอีกครั้งจะโหลดต่อเฉพาะส่วนที่ขาด</div>
+  <div class="row" style="gap:6px;margin:4px 0"><button onclick="clearCache()" style="flex:0 0 auto" title="ลบแผนที่และ Elevation ที่เก็บไว้ในเครื่อง">ล้าง cache</button><select id="elvZ" style="flex:1;min-width:0" title="ความละเอียด Elevation"><option value="11">ปกติ ~190MB</option><option value="12">ละเอียด ~750MB</option></select><button id="elvB" onclick="elvDl()" style="flex:0 0 auto" title="โหลด Elevation ทั้งพื้นที่แผนที่ไว้ใช้ offline (กดอีกครั้งโหลดต่อส่วนที่ขาด)">⛰ โหลด Elevation</button></div>
+  <div class="sm" id="elvInfo"></div>
   <details><summary class="sm">ขั้นสูง: URL แผนที่เอง</summary>
    <input id="tileUrl" style="width:100%" value="map.pmtiles" placeholder="map.pmtiles หรือ tiles/{z}/{x}/{y}.png">
    <label><input type="checkbox" id="tms"> TMS (gdal2tiles ไม่ได้ใส่ --xyz)</label>
@@ -872,11 +870,11 @@ async function elvDl(){if(elvRun){elvRun.stop=1;return}
   if(!confirm(`โหลดข้อมูลความสูงทั้งหมด ${N} ชิ้น (ประมาณ ${Math.round(N*0.04)} MB) เก็บไว้ใช้ offline?\nใช้ Wi-Fi และเปิดแอปค้างไว้จนเสร็จ (หยุดแล้วกดใหม่จะโหลดต่อจากเดิม)`))return;
   let c;try{c=await caches.open('tiles')}catch(e){return alert('เบราว์เซอร์นี้เก็บข้อมูล offline ไม่ได้')}
   const L_=[];for(let x=x0;x<=x1;x++)for(let y=y0;y<=y1;y++)L_.push(`https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${z}/${x}/${y}.png`);
-  const st=elvRun={stop:0};let done=0,bad=0,k=0;$('elvB').textContent='⏹ หยุดโหลด Elevation';
+  const st=elvRun={stop:0};let done=0,bad=0,k=0;$('elvB').textContent='⏹ หยุด';
   const show=()=>$('elvInfo').textContent=`Elevation: ${done}/${N} ชิ้น${bad?` · ไม่สำเร็จ ${bad}`:''}`;
   const work=async()=>{while(!st.stop&&k<L_.length){const u=L_[k++];
     try{if(!(await c.match(u))){const r=await fetch(u,{mode:'cors'});if(!r.ok)throw 0;await c.put(u,r)}}catch(e){bad++}done++;if(done%10===0||done===N)show()}};
-  show();await Promise.all(Array.from({length:6},work));elvRun=null;$('elvB').textContent='⛰ โหลด Elevation ทั้งหมด (ใช้ offline)';
+  show();await Promise.all(Array.from({length:6},work));elvRun=null;$('elvB').textContent='⛰ โหลด Elevation';
   $('elvInfo').textContent=st.stop?`หยุดแล้ว: เก็บ ${done-bad}/${N} ชิ้น`:`เก็บ Elevation แล้ว ${done-bad}/${N} ชิ้น${bad?` (ไม่สำเร็จ ${bad} ชิ้น กดอีกครั้งเพื่อโหลดส่วนที่ขาด)`:''} · ใช้ได้ตอนไม่มีเน็ต`;cacheInfo()}
 async function clearCache(){if(!confirm('ลบแผนที่ที่เก็บไว้ offline ทั้งหมด?'))return;await caches.delete('tiles');cacheInfo()}
 if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost')){
@@ -1286,4 +1284,6 @@ globSizes();setMode(S.ui.mode);routeBtns();setStyle(S.ui.style);setBase();togTxt
   function fit(){let h=innerHeight;if(st&&window.screen){const pt=innerHeight>=innerWidth,sh=pt?Math.max(screen.width,screen.height):Math.min(screen.width,screen.height);if(Math.abs(sh-h)<=120)h=Math.max(h,sh)}
     document.documentElement.style.setProperty('--app-h',h+'px');try{map.invalidateSize()}catch(e){}}
   fit();addEventListener('resize',fit);addEventListener('orientationchange',()=>setTimeout(fit,300))})();
+// start in paper view (มุมมองกระดาษ) by default
+setTimeout(()=>{if(!pvOn)pvToggle()},0);
 </script></body></html>
