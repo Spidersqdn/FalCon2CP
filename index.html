@@ -1016,7 +1016,7 @@ function slName(){const [d,e]=($('sl_code').value||'').split('-').map(s=>s.trim(
 const slBlob=()=>new Promise((ok,no)=>{try{$('slC').toBlob(b=>b?ok(b):no(new Error('blob')),'image/png')}catch(e){no(e)}});
 async function slPng(){try{dlBlob(slName(),await slBlob())}catch(e){alert('บันทึก PNG ไม่ได้: '+e.message)}}
 async function slShare(){try{const f=new File([await slBlob()],slName(),{type:'image/png'});
-  if(navigator.canShare&&navigator.canShare({files:[f]}))await navigator.share({files:[f],title:'Mission Overview'});else{dlBlob(f.name,f);alert('อุปกรณ์นี้แชร์ไฟล์ไม่ได้ จึงบันทึกเป็นไฟล์แทน')}}
+  if(navigator.canShare&&navigator.canShare({files:[f]}))await navigator.share({files:[f]});else{dlBlob(f.name,f);alert('อุปกรณ์นี้แชร์ไฟล์ไม่ได้ จึงบันทึกเป็นไฟล์แทน')}}
   catch(e){if(e.name!=='AbortError')alert('แชร์ไม่ได้: '+e.message)}}
 // ---- DRAFT PLAN: 2-page Word (.docx) "เส้นทางบิน ขบวน ฮ." (p.1 header + map, p.2 header + CP table + coordinates + NOTE) ----
 const DF_F=['ttl','falt','cor','note'];
@@ -1064,7 +1064,7 @@ async function dfApFill(){const b=$('df_apb'),t=b.textContent;b.textContent='ก
 const dfName=x=>{const d=new Date(),p=n=>String(n).padStart(2,'0');return `DraftPlan_${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${x.startsWith('-')?x:'.'+x}`};
 // iPhone/iPad: share sheet (save to Files / LINE ...); others: download
 async function dfSend(F,ttl){if(/iP(hone|ad|od)|Macintosh/.test(navigator.userAgent)&&'ontouchend' in document&&navigator.canShare&&navigator.canShare({files:F})){
-    try{return await navigator.share({files:F,title:ttl})}catch(e){if(e.name==='AbortError')return}}
+    try{return await navigator.share({files:F})}catch(e){if(e.name==='AbortError')return}}
   for(const f of F){dlBlob(f.name,f);await new Promise(r=>setTimeout(r,400))}}
 // PDF / PNG: the same 2 pages laid out as A4 HTML (794x1123 px) and captured
 async function dfImg(k,D,ttl,fa,cv){if(!window.html2canvas)await loadJS('lib/html2canvas.min.js');if(k==='pdf'&&!window.jspdf)await loadJS('lib/jspdf.umd.min.js');
