@@ -26,6 +26,13 @@ body.hide #side{display:none}
 #sld .sfm{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}#sld .sfm label{font-size:12px;color:var(--mu)}#sld .sfm label.w{grid-column:1/-1}#sld .sfm input{width:100%;margin-top:2px}
 #sld .sbt{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:8px 0}#sld .sbt button{margin:0}
 #sld canvas{width:100%;height:auto;display:block;border:1px solid var(--ln,#3d4147)}
+#dft{position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,.6);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:16px}
+#dft .sbox{background:var(--bg,#1b1d20);border:1px solid var(--ln,#3d4147);border-radius:8px;padding:12px;width:min(1100px,100%)}
+#dft .shd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}#dft .shd button{width:auto;margin:0;padding:4px 10px}
+#dft .sfm{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}#dft .sfm label{font-size:12px;color:var(--mu)}#dft .sfm label.w{grid-column:1/-1}#dft .sfm input{width:100%;margin-top:2px}
+#dft .sbt{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:8px 0}#dft .sbt button{margin:0}
+#dft .sbox{width:min(640px,100%)}#dft .sbt{grid-template-columns:1fr}#dft .sfm{grid-template-columns:1fr 1fr}
+@media (max-width:700px){#dft .zz{grid-template-columns:1fr 1fr}#dft .sbt{grid-template-columns:1fr 1fr}}
 @media (max-width:700px){#sld .sfm{grid-template-columns:1fr 1fr}#sld .sbt{grid-template-columns:1fr 1fr}}
 #pvw{position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,.6);display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:16px}
 #pvw .pbox{background:var(--bg,#1b1d20);border:1px solid var(--ln,#3d4147);border-radius:8px;padding:12px;width:min(1200px,100%)}
@@ -143,7 +150,7 @@ html{background:#232529}
 #map{min-width:0;min-height:0}fieldset{min-width:0}.row>div>input,.row>div>select{width:100%}
 /* Keep menu gestures from zooming the page; Leaflet still handles map gestures. */
 @media (any-pointer:coarse){
- #side,#edp,.ap-layers,#tog,.leaflet-popup,#sld .shd,#sld .sfm,#sld .sbt,#pvw .phd,#pvw .pbt{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+ #side,#edp,.ap-layers,#tog,.leaflet-popup,#sld .shd,#sld .sfm,#sld .sbt,#dft .shd,#dft .sfm,#dft .sbt,#pvw .phd,#pvw .pbt{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjust:100%}
 }
 @media (pointer:coarse){
  button{min-height:38px;padding:8px 12px}.seg button,.b3 button{min-height:42px}
@@ -253,7 +260,7 @@ html{background:#232529}
  </fieldset>
  <fieldset><legend>ไฟล์</legend>
   <input type="file" id="imp" accept=".csv,.kml,.kmz,.gpx" hidden onchange="importFile(this.files[0]).catch(()=>alert('อ่านไฟล์ไม่ได้'));this.value=''">
-  <div class="b3"><button class="pri" onclick="imp.click()" title="CSV / KML / KMZ / GPX">IMPORT</button><button onclick="$('expM').classList.toggle('on')">EXPORT ▾</button><button onclick="openSlide()" title="Mission Overview 16:9 PNG">SLIDE</button></div>
+  <div class="b3" style="grid-template-columns:repeat(4,1fr)"><button class="pri" onclick="imp.click()" title="CSV / KML / KMZ / GPX">IMPORT</button><button onclick="$('expM').classList.toggle('on')">EXPORT ▾</button><button onclick="openSlide()" title="Mission Overview 16:9 PNG">SLIDE</button><button onclick="openDraft()" title="ดราฟแผนสมบูรณ์ Word 2 หน้า">WORD</button></div>
   <div id="expM" class="seg" style="margin:6px 0 0"><button onclick="expAs('kml')">KML</button><button onclick="expAs('kmz')">KMZ</button><button onclick="expAs('gpx')">GPX</button><button onclick="expAs('csv')">CSV</button></div>
   <div class="b3"><button onclick="undo()" title="Ctrl+Z">↶ UNDO</button><button onclick="reverseRoute()" title="กลับทิศเส้นทาง">⇄ BACK TRACK</button><button onclick="clearAll()">CLEAR</button></div>
  </fieldset>
@@ -283,7 +290,7 @@ html{background:#232529}
 const COL={PZ:'#FF66CC',CP:'#22BB33',LZ:'#FFD700'};
 const OSM='https://tile.openstreetmap.org/{z}/{x}/{y}.png',SAT='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'; // SAT: Esri World Imagery
 const $=id=>document.getElementById(id);
-const menuTouchTarget=t=>t instanceof Element&&t.closest('#side,#edp,.ap-layers,#tog,.leaflet-popup,#sld .shd,#sld .sfm,#sld .sbt,#pvw .phd,#pvw .pbt');
+const menuTouchTarget=t=>t instanceof Element&&t.closest('#side,#edp,.ap-layers,#tog,.leaflet-popup,#sld .shd,#sld .sfm,#sld .sbt,#dft .shd,#dft .sfm,#dft .sbt,#pvw .phd,#pvw .pbt');
 // iPhone/iPad: no double-tap page zoom on menus (a 2nd tap within 300 ms on the same menu is not allowed to zoom)
 let lastTap=0;document.addEventListener('touchend',e=>{if(e.touches.length||!menuTouchTarget(e.target)||e.target.closest('input,select,textarea'))return;const t=Date.now();if(t-lastTap<300){e.preventDefault();e.target.click?.()}lastTap=t},{passive:false,capture:true});
 // Safari gesture events complement touch-action without cancelling menu taps or scrolling.
@@ -1002,6 +1009,64 @@ async function slPng(){try{dlBlob(slName(),await slBlob())}catch(e){alert('บ�
 async function slShare(){try{const f=new File([await slBlob()],slName(),{type:'image/png'});
   if(navigator.canShare&&navigator.canShare({files:[f]}))await navigator.share({files:[f],title:'Mission Overview'});else{dlBlob(f.name,f);alert('อุปกรณ์นี้แชร์ไฟล์ไม่ได้ จึงบันทึกเป็นไฟล์แทน')}}
   catch(e){if(e.name!=='AbortError')alert('แชร์ไม่ได้: '+e.message)}}
+// ---- DRAFT PLAN: 2-page Word (.docx) "เส้นทางบิน ขบวน ฮ." (p.1 header + map, p.2 header + CP table + coordinates + NOTE) ----
+const DF_F=['ttl','falt','note'];
+function dfLoad(){let o={};try{o=JSON.parse(localStorage.getItem('draftF'))||{}}catch(e){}return o}
+function dfSave(){const o={};DF_F.forEach(k=>o[k]=$('df_'+k).value);try{localStorage.setItem('draftF',JSON.stringify(o))}catch(e){}}
+function openDraft(){if(S.pts.length<2)return alert('ต้องมี waypoint อย่างน้อย 2 จุดก่อนทำดราฟแผน');
+  if(!$('dft'))document.body.insertAdjacentHTML('beforeend',`<div id="dft"><div class="sbox">
+    <div class="shd"><b>ดราฟแผนสมบูรณ์ (Word 2 หน้า)</b><button onclick="$('dft').remove()">✕</button></div>
+    <div class="sfm"><label class="w">หัวเรื่อง<input id="df_ttl" onchange="dfSave()"></label>
+      <label>FLIGHT ALT (ft)<input id="df_falt" inputmode="numeric" onchange="dfSave()"></label>
+      <label class="w">NOTE (ขึ้นบรรทัดใหม่ได้)<textarea id="df_note" rows="6" onchange="dfSave()" style="width:100%;margin-top:2px;font:inherit"></textarea></label></div>
+    <div class="sbt"><button class="pri" id="df_go" onclick="draftDocx()">สร้างไฟล์ Word</button></div>
+    <div style="font-size:12px;color:var(--mu)">ชื่อจุด/ระยะ/เวลา/HDG/SAFETY ALT ใช้ค่าเส้นทางหลักตามแผนที่ · แผนที่หน้า 1 = มุมมองแผนสมบูรณ์</div></div></div>`);
+  const o=dfLoad();$('df_ttl').value=o.ttl??'เส้นทางบิน ขบวน ฮ.';$('df_falt').value=o.falt??'2000';$('df_note').value=o.note??''}
+const dfX=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const dfN=v=>{const n=+String(v).replace(/,/g,'');return String(v).trim()===''?'-':isNaN(n)?String(v):Math.round(n).toLocaleString('en-US')};
+function dfDM(v,h){v=+v;const a=Math.abs(v);let d=Math.floor(a),m=+((a-d)*60).toFixed(3);if(m>=60){d++;m=0}return d+'° '+m.toFixed(3).padStart(6,'0')+"'"+(v<0?h[1]:h[0])}
+// run / paragraph / cell helpers (TH SarabunPSK 16 pt)
+const dfR=(t,o={})=>String(t).split('\t').map((s,i)=>(i?'<w:r><w:tab/></w:r>':'')+(s?`<w:r><w:rPr>${o.b?'<w:b/><w:bCs/>':''}${o.u?'<w:u w:val="single"/>':''}${o.sz?`<w:sz w:val="${o.sz}"/><w:szCs w:val="${o.sz}"/>`:''}</w:rPr><w:t xml:space="preserve">${dfX(s)}</w:t></w:r>`:'')).join('');
+const dfP=(t,o={})=>`<w:p><w:pPr>${o.tabs?'<w:tabs>'+o.tabs.map(x=>`<w:tab w:val="left" w:pos="${x}"/>`).join('')+'</w:tabs>':''}<w:spacing w:before="0" w:after="${o.after??0}" w:line="240" w:lineRule="auto"/>${o.jc?`<w:jc w:val="${o.jc}"/>`:''}</w:pPr>${o.raw||dfR(t,o)}</w:p>`;
+const dfC=(w,t,o={})=>`<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/>${o.span?`<w:gridSpan w:val="${o.span}"/>`:''}${o.vm?`<w:vMerge${o.vm==='r'?' w:val="restart"':''}/>`:''}<w:vAlign w:val="center"/></w:tcPr>${(Array.isArray(t)?t:[t]).map(s=>dfP(s,{jc:o.jc??'center'})).join('')}</w:tc>`;
+const dfT=(W,rows)=>`<w:tbl><w:tblPr><w:tblW w:w="${W.reduce((s,x)=>s+x,0)}" w:type="dxa"/><w:jc w:val="center"/><w:tblBorders>${['top','left','bottom','right','insideH','insideV'].map(b=>`<w:${b} w:val="single" w:sz="4" w:space="0" w:color="000000"/>`).join('')}</w:tblBorders><w:tblLayout w:type="fixed"/><w:tblCellMar><w:left w:w="80" w:type="dxa"/><w:right w:w="80" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>${W.map(x=>`<w:gridCol w:w="${x}"/>`).join('')}</w:tblGrid>${rows.map(r=>`<w:tr><w:trPr><w:cantSplit/><w:trHeight w:val="420"/></w:trPr>${r}</w:tr>`).join('')}</w:tbl>`;
+function dfData(){const P=slRoute(),L_=slLegs(),NI=nmInt(L_.map(l=>l.nm)),T=NI.reduce((s,x)=>s+x,0),TM=Math.round(L_.reduce((s,l)=>s+l.min,0));
+  const nm=p=>(p.name||'').trim()||p.type,lab=p=>String(p.type||'').replace(/^CP(\d+)$/i,'CP $1');let dn=0,tm=0;
+  const rows=P.map((p,i)=>{const l=i?L_[i-1]:null;if(l){dn+=NI[i-1];tm+=Math.round(l.min)}const last=i===P.length-1,sa=(l||L_[0]||{}).alt;
+    return {lab:lab(p),name:nm(p),hdg:l?String(l.crsTxt):'-',dR:l?String(NI[i-1]):'-',dM:last?'-':String(T-dn),tR:l?String(Math.round(l.min)):'-',tM:last?'-':String(TM-tm),sa:has(sa)?dfN(sa):'-',p}});
+  return {P,rows,T,TM,from:nm(P[0]),to:nm(P[P.length-1])}}
+async function draftDocx(){const b=$('df_go');if(b.disabled)return;dfSave();b.disabled=true;const bt=b.textContent;b.textContent='กำลังสร้าง…';
+  try{const D=dfData(),ttl=$('df_ttl').value.trim()||'เส้นทางบิน ขบวน ฮ.',fa=dfN($('df_falt').value),TW=10206; // A4, 1.5 cm margins -> 10206 twips text width
+    // map image 16:9 = the app's map in แผนที่แผนสมบูรณ์ style (same renderer as SLIDE)
+    const cv=document.createElement('canvas');cv.width=3200;cv.height=1800;const c=cv.getContext('2d');c.setTransform(2,0,0,2,0,0);await slMap(c,0,0,1600,900);
+    const png=await new Promise((ok,no)=>cv.toBlob(x=>x?ok(x):no(new Error('png')),'image/png'));
+    const TB=[1900,2100,5400,6600,6900];
+    const head=dfP(ttl,{jc:'center',b:1,u:1,after:160})+dfP(`ตำบลต้นทาง\t: ${D.from}`,{tabs:TB})+dfP(`ตำบลปลายทาง\t: ${D.to}`,{tabs:TB})
+      +dfP(`ระยะทาง\t: ${D.T} ไมล์ทะเล\t\tใช้เวลาบิน\t:  ${D.TM} นาที`,{tabs:[1900,4300,5400,6600]})+dfP('',{after:120});
+    const ew=TW*635,eh=Math.round(ew*9/16);
+    const img=`<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${ew}" cy="${eh}"/><wp:docPr id="1" name="map"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="1" name="map.png"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rImg"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${ew}" cy="${eh}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:ln w="9525"><a:solidFill><a:srgbClr val="000000"/></a:solidFill></a:ln></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>`;
+    const W1=[700,2606,700,1050,1050,1050,1050,1000,1000];
+    const cp=dfT(W1,[dfC(W1[0],'CP',{vm:'r'})+dfC(W1[1],'STATION',{vm:'r'})+dfC(W1[2],'HDG',{vm:'r'})+dfC(2100,'DISTANCE (NM)',{span:2})+dfC(2100,'TIME (MIN)',{span:2})+dfC(1000,['FLIGHT','ALT.'],{vm:'r'})+dfC(1000,['SAFETY','ALT.'],{vm:'r'}),
+      dfC(W1[0],'',{vm:1})+dfC(W1[1],'',{vm:1})+dfC(W1[2],'',{vm:1})+dfC(1050,'ROUTE')+dfC(1050,'REMAIN')+dfC(1050,'ROUTE')+dfC(1050,'REMAIN')+dfC(1000,'',{vm:1})+dfC(1000,'',{vm:1}),
+      ...D.rows.map(r=>dfC(W1[0],r.lab)+dfC(W1[1],r.name,{jc:'left'})+dfC(W1[2],r.hdg)+dfC(1050,r.dR)+dfC(1050,r.dM)+dfC(1050,r.tR)+dfC(1050,r.tM)+dfC(1000,fa)+dfC(1000,r.sa))]);
+    const W2=[760,3500,1650,1750,2546],note=$('df_note').value.replace(/\r/g,'').split('\n');
+    const co=dfT(W2,[...D.rows.map(r=>dfC(W2[0],r.lab)+dfC(W2[1],r.name,{jc:'left'})+dfC(W2[2],dfDM(r.p.lat,'NS'))+dfC(W2[3],dfDM(r.p.lon,'EW'))+dfC(W2[4],mgrs(r.p.lat,r.p.lon))),
+      `<w:tc><w:tcPr><w:tcW w:w="${TW}" w:type="dxa"/><w:gridSpan w:val="5"/></w:tcPr>${['NOTE :',...note].map(s=>dfP(s)).join('')}</w:tc>`]);
+    const sect=`<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="850" w:bottom="1134" w:left="850" w:header="567" w:footer="567" w:gutter="0"/></w:sectPr>`;
+    const body=head+dfP('',{raw:img,jc:'center'})+'<w:p><w:r><w:br w:type="page"/></w:r></w:p>'+head+cp+dfP('',{after:240})+dfP('พิกัดสนาม ฮ. และจุดรายงาน',{jc:'center',b:1,u:1,after:120})+co+dfP('')+sect;
+    const NS='xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"';
+    const F='TH SarabunPSK',z=new JSZip();
+    z.file('[Content_Types].xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>');
+    z.file('_rels/.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');
+    z.file('word/_rels/document.xml.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rImg" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/map.png"/></Relationships>');
+    z.file('word/styles.xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="${F}" w:hAnsi="${F}" w:eastAsia="${F}" w:cs="${F}"/><w:sz w:val="32"/><w:szCs w:val="32"/><w:lang w:val="en-US" w:bidi="th-TH"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style></w:styles>`);
+    z.file('word/document.xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ${NS}><w:body>${body}</w:body></w:document>`);
+    z.file('word/media/map.png',png);
+    const blob=await z.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}),fn=`DraftPlan_${new Date().toISOString().slice(0,16).replace(/\D/g,'')}.docx`;
+    const f=new File([blob],fn,{type:blob.type});
+    if(/iP(hone|ad|od)|Macintosh/.test(navigator.userAgent)&&'ontouchend' in document&&navigator.canShare&&navigator.canShare({files:[f]}))await navigator.share({files:[f],title:ttl}).catch(e=>{if(e.name!=='AbortError')dlBlob(fn,blob)});else dlBlob(fn,blob)}
+  catch(e){alert('สร้างไฟล์ Word ไม่ได้: '+e.message)}
+  finally{b.disabled=false;b.textContent=bt}}
 // ---- Export Map: tiles of paper at true scale (print / save as PDF) ----
 const PAPER={A4:[210,297],A3:[297,420]},MERC=L.CRS.EPSG3857,M0=2*Math.PI*6378137/256; // m/px at z0, equator
 let pmSrc=null,prShow=false,prMaps=[];const pgGrp=L.layerGroup().addTo(map);
