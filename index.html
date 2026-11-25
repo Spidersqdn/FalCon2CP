@@ -218,8 +218,9 @@ html{background:#232529}
   <div class="sm" id="lmInfo">เปิดไฟล์แผนที่จากเครื่องโดยตรง ไม่คัดลอกไฟล์ ใช้ได้โดยไม่ต้องมีเน็ต</div>
   <div class="sm" id="cacheInfo">-</div>
   <button onclick="clearCache()">ล้าง cache แผนที่</button>
-  <button id="elvB" onclick="elvDl()">⛰ โหลด Elevation พื้นที่บนจอ (ใช้ offline)</button>
-  <div class="sm" id="elvInfo">เก็บข้อมูลความสูงของพื้นที่ที่เห็นบนแผนที่ไว้ในเครื่อง ใช้ทำ Elevation Profile / ความสูงบินอัตโนมัติตอนไม่มีเน็ต</div>
+  <select id="elvZ" style="width:100%"><option value="11">Elevation ทั้งประเทศ · ปกติ (~190 MB)</option><option value="12">Elevation ทั้งประเทศ · ละเอียด (~750 MB)</option></select>
+  <button id="elvB" onclick="elvDl()">⛰ โหลด Elevation ทั้งหมด (ใช้ offline)</button>
+  <div class="sm" id="elvInfo">เก็บข้อมูลความสูงทั้งพื้นที่แผนที่ (ไทยและรอบข้าง) ไว้ในเครื่อง ใช้ทำ Elevation Profile / ความสูงบินอัตโนมัติตอนไม่มีเน็ต · โหลดค้างไว้ได้ กดอีกครั้งจะโหลดต่อเฉพาะส่วนที่ขาด</div>
   <details><summary class="sm">ขั้นสูง: URL แผนที่เอง</summary>
    <input id="tileUrl" style="width:100%" value="map.pmtiles" placeholder="map.pmtiles หรือ tiles/{z}/{x}/{y}.png">
    <label><input type="checkbox" id="tms"> TMS (gdal2tiles ไม่ได้ใส่ --xyz)</label>
@@ -484,11 +485,12 @@ function autoAlt(a,b){const f=b&&ELV[ekey(a,b)];return f==null?null:String(Math.
 function legAlt(a,b,o){return has(o.alt)?o.alt:autoAlt(a,b)??a.alt}
 function demTile(z,x,y){const k=z+'/'+x+'/'+y;return DEM[k]||(DEM[k]=fetch('https://s3.amazonaws.com/elevation-tiles-prod/terrarium/'+k+'.png').then(r=>{if(!r.ok)throw 0;return r.blob()}).then(createImageBitmap)
   .then(bm=>{const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d');g.drawImage(bm,0,0);return g.getImageData(0,0,256,256).data}).catch(()=>{delete DEM[k];return null}))}
-const PROF={};
+const PROF={},DEMX={};
 async function legMaxFt(a,b){const z=12,n=2**z,m=Math.max(2,Math.ceil(legCalc(a,b).nm*1852/60));let mx=-1e9,ok=0;const pr=[],bin=Math.max(1,Math.round(m/200));let bm=-1e9;
   for(let j=0;j<=m;j++){const la=LA(a)+(LA(b)-LA(a))*j/m,lo=LO(a)+(LO(b)-LO(a))*j/m,r=la*Math.PI/180;
-    const fx=(lo+180)/360*n,fy=(1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*n,tx=Math.floor(fx),ty=Math.floor(fy);
-    const d=await demTile(z,tx,ty);if(!d)continue;const i=(Math.floor((fy-ty)*256)*256+Math.floor((fx-tx)*256))*4;
+    let d=null,fx,fy,tx,ty;for(const zz of [z,11,10]){const nn=2**zz;fx=(lo+180)/360*nn;fy=(1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*nn;tx=Math.floor(fx);ty=Math.floor(fy);
+      const k=zz+'/'+tx+'/'+ty;if(DEMX[k]>Date.now())continue;d=await demTile(zz,tx,ty);if(d)break;DEMX[k]=Date.now()+60000} // missing tile (offline): try a coarser zoom, skip it for 60 s
+    if(!d)continue;const i=(Math.floor((fy-ty)*256)*256+Math.floor((fx-tx)*256))*4;
     const e=d[i]*256+d[i+1]+d[i+2]/256-32768;mx=Math.max(mx,e);bm=Math.max(bm,e);ok=1;if(j%bin===0||j===m){pr.push(Math.max(0,bm)*3.28084);bm=-1e9}}
   if(ok)PROF[ekey(a,b)]=pr;return ok?Math.max(0,mx)*3.28084:null}
 function profile(L_){const g=$('prG');if(!L_.length){g.innerHTML='<div class="e">เพิ่มจุดอย่างน้อย 2 จุด</div>';$('prM').textContent='';return}
@@ -865,17 +867,16 @@ async function cacheInfo(){try{const k=await caches.open('tiles').then(c=>c.keys
 // elevation for offline: the same z12 terrain tiles the profile uses, for the area on screen, stored in the 'tiles' cache (the service worker serves them offline)
 let elvRun=null;
 async function elvDl(){if(elvRun){elvRun.stop=1;return}
-  const b=map.getBounds(),z=12,n=2**z,tx=lo=>Math.floor((lo+180)/360*n),ty=la=>{const r=la*Math.PI/180;return Math.floor((1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*n)};
-  const x0=Math.max(0,tx(b.getWest())),x1=Math.min(n-1,tx(b.getEast())),y0=Math.max(0,ty(b.getNorth())),y1=Math.min(n-1,ty(b.getSouth())),N=(x1-x0+1)*(y1-y0+1);
-  if(N>3000)return alert(`พื้นที่บนจอใหญ่เกินไป (${N} ชิ้น) ซูมเข้าให้เห็นเฉพาะพื้นที่ที่จะบินก่อน (ไม่เกิน 3000 ชิ้น)`);
-  if(!confirm(`โหลดข้อมูลความสูง ${N} ชิ้น (ประมาณ ${Math.max(1,Math.round(N*0.1))} MB) ของพื้นที่บนจอ เก็บไว้ใช้ offline?`))return;
+  const EB=[97.08,5.18,106.06,20.71],z=+$('elvZ').value||11,n=2**z,tx=lo=>Math.floor((lo+180)/360*n),ty=la=>{const r=la*Math.PI/180;return Math.floor((1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*n)};
+  const x0=tx(EB[0]),x1=tx(EB[2]),y0=ty(EB[3]),y1=ty(EB[1]),N=(x1-x0+1)*(y1-y0+1);
+  if(!confirm(`โหลดข้อมูลความสูงทั้งหมด ${N} ชิ้น (ประมาณ ${Math.round(N*0.04)} MB) เก็บไว้ใช้ offline?\nใช้ Wi-Fi และเปิดแอปค้างไว้จนเสร็จ (หยุดแล้วกดใหม่จะโหลดต่อจากเดิม)`))return;
   let c;try{c=await caches.open('tiles')}catch(e){return alert('เบราว์เซอร์นี้เก็บข้อมูล offline ไม่ได้')}
   const L_=[];for(let x=x0;x<=x1;x++)for(let y=y0;y<=y1;y++)L_.push(`https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${z}/${x}/${y}.png`);
   const st=elvRun={stop:0};let done=0,bad=0,k=0;$('elvB').textContent='⏹ หยุดโหลด Elevation';
   const show=()=>$('elvInfo').textContent=`Elevation: ${done}/${N} ชิ้น${bad?` · ไม่สำเร็จ ${bad}`:''}`;
   const work=async()=>{while(!st.stop&&k<L_.length){const u=L_[k++];
     try{if(!(await c.match(u))){const r=await fetch(u,{mode:'cors'});if(!r.ok)throw 0;await c.put(u,r)}}catch(e){bad++}done++;if(done%10===0||done===N)show()}};
-  show();await Promise.all(Array.from({length:6},work));elvRun=null;$('elvB').textContent='⛰ โหลด Elevation พื้นที่บนจอ (ใช้ offline)';
+  show();await Promise.all(Array.from({length:6},work));elvRun=null;$('elvB').textContent='⛰ โหลด Elevation ทั้งหมด (ใช้ offline)';
   $('elvInfo').textContent=st.stop?`หยุดแล้ว: เก็บ ${done-bad}/${N} ชิ้น`:`เก็บ Elevation แล้ว ${done-bad}/${N} ชิ้น${bad?` (ไม่สำเร็จ ${bad} ชิ้น กดอีกครั้งเพื่อโหลดส่วนที่ขาด)`:''} · ใช้ได้ตอนไม่มีเน็ต`;cacheInfo()}
 async function clearCache(){if(!confirm('ลบแผนที่ที่เก็บไว้ offline ทั้งหมด?'))return;await caches.delete('tiles');cacheInfo()}
 if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost')){
