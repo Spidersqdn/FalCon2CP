@@ -261,7 +261,7 @@ html{background:#232529}
   <input type="file" id="imp" accept=".csv,.kml,.kmz,.gpx" hidden onchange="importFile(this.files[0]).catch(()=>alert('อ่านไฟล์ไม่ได้'));this.value=''">
   <div class="b3" style="grid-template-columns:repeat(4,1fr)"><button class="pri" onclick="imp.click()" title="CSV / KML / KMZ / GPX">IMPORT</button><button onclick="$('expM').classList.toggle('on')">EXPORT ▾</button><button onclick="openSlide()" title="Mission Overview 16:9 PNG">SLIDE</button><button onclick="openDraft()" title="ดราฟแผนสมบูรณ์ 2 หน้า: Word / PDF / PNG">DATA</button></div>
   <div id="expM" class="seg" style="margin:6px 0 0"><button onclick="expAs('kml')">KML</button><button onclick="expAs('kmz')">KMZ</button><button onclick="expAs('gpx')">GPX</button><button onclick="expAs('csv')">CSV</button></div>
-  <div class="b3"><button onclick="undo()" title="Ctrl+Z">↶ UNDO</button><button onclick="reverseRoute()" title="กลับทิศเส้นทาง">⇄ BACK TRACK</button><button onclick="clearAll()">CLEAR</button></div>
+  <div class="b3" style="grid-template-columns:repeat(4,1fr)"><button onclick="undo()" title="Ctrl+Z">↶ UNDO</button><button onclick="redo()" title="Ctrl+Y / Ctrl+Shift+Z">↷ REDO</button><button onclick="reverseRoute()" title="กลับทิศเส้นทาง">⇄ BACK TRACK</button><button onclick="clearAll()">CLEAR</button></div>
  </fieldset>
  <fieldset><legend>Export Map (พิมพ์ขนาดจริง แบ่งแผ่น)</legend>
   <div class="row"><div><div class="sm">มาตราส่วน 1:</div><select id="pS" onchange="prUpd();pvApply()"><option value="50000">50,000<option value="100000">100,000<option value="250000" selected>250,000<option value="500000">500,000<option value="1000000">1,000,000</select></div>
@@ -429,11 +429,12 @@ function shape(t){const c=kind(t);
   if(c==='LZ')return '<svg width="26" height="26"><circle cx="13" cy="13" r="11" fill="#F5A800" stroke="#1F4E79" stroke-width="2.5"/></svg>';
   return '<svg width="26" height="26"><rect x="2" y="2" width="22" height="22" fill="none" stroke="#000" stroke-width="2.5"/></svg>';}
 // undo history: snapshot route before each change; rapid changes (sliders) merge into one step
-const HIST=[];let lastSnap=null,lastT=0,undoing=false;
+const HIST=[],FUT=[];let lastSnap=null,lastT=0,undoing=false;
 function snap(){const j=JSON.stringify(S.pts,(k,v)=>k==='_auto'?undefined:v);if(j===lastSnap)return;
-  if(lastSnap!==null&&!undoing){const now=Date.now();if(now-lastT>400||!HIST.length)HIST.push(lastSnap);lastT=now;if(HIST.length>100)HIST.shift()}
+  if(lastSnap!==null&&!undoing){const now=Date.now();if(now-lastT>400||!HIST.length)HIST.push(lastSnap);FUT.length=0;lastT=now;if(HIST.length>100)HIST.shift()}
   lastSnap=j}
-function undo(){if(!HIST.length)return;undoing=true;S.pts=JSON.parse(HIST.pop());closeEd();draw();undoing=false}
+function undo(){if(!HIST.length)return;undoing=true;if(lastSnap!==null)FUT.push(lastSnap);S.pts=JSON.parse(HIST.pop());closeEd();draw();undoing=false}
+function redo(){if(!FUT.length)return;undoing=true;if(lastSnap!==null)HIST.push(lastSnap);S.pts=JSON.parse(FUT.pop());closeEd();draw();undoing=false}
 // route roles by position: first = PZ, last = LZ, the rest = CP (keeps a matching suffix like CP2)
 // CPs are numbered through the primary route first (CP1..n), then continue on the alternate route
 // a CP with a manual number (cpn) keeps it; auto numbers skip the numbers set by hand
@@ -453,15 +454,15 @@ function routeBtns(){const r=S.ui.route||'main';syncShow();$('rMain').classList.
 function setRoute(r){const cur=S.ui.route||'main';if(r===cur)return;
   if(!S.alt){if(S.pts.length<2)return alert('สร้างเส้นทางหลักให้มี PZ และ LZ ก่อน');const f=S.pts[0],z=S.pts[S.pts.length-1];
     S.alt=[{type:'PZ',name:f.name,lat:f.lat,lon:f.lon,alt:f.alt},{type:'LZ',name:z.name,lat:z.lat,lon:z.lon,alt:''}]}
-  syncEnds();[S.pts,S.alt]=[S.alt,S.pts];S.ui.route=r;HIST.length=0;lastSnap=null;closeEd();draw();routeBtns()}
+  syncEnds();[S.pts,S.alt]=[S.alt,S.pts];S.ui.route=r;HIST.length=FUT.length=0;lastSnap=null;closeEd();draw();routeBtns()}
 // swap roles: primary becomes alternate and vice versa (the route being edited stays the same line)
 function swapRoutes(){if(!S.alt)return;syncEnds();S.ui.route=(S.ui.route||'main')==='alt'?'main':'alt';
-  Object.values(S.ui.sh||{}).forEach(o=>[o.main,o.alt]=[o.alt,o.main]);HIST.length=0;lastSnap=null;closeEd();draw();routeBtns()}
+  Object.values(S.ui.sh||{}).forEach(o=>[o.main,o.alt]=[o.alt,o.main]);HIST.length=FUT.length=0;lastSnap=null;closeEd();draw();routeBtns()}
 // CLEAR: remove everything (primary + alternate routes and all their labels, tables, leg boxes)
 function clearAll(){if(!confirm('ลบทุกอย่าง (เส้นทางหลัก + สำรอง)?'))return;S.pts=[];S.alt=null;S.ui.route='main';
-  Object.values(S.ui.sh||{}).forEach(o=>{o.main=o.alt=true});HIST.length=0;lastSnap=null;closeEd();draw();routeBtns()}
+  Object.values(S.ui.sh||{}).forEach(o=>{o.main=o.alt=true});HIST.length=FUT.length=0;lastSnap=null;closeEd();draw();routeBtns()}
 function delAlt(){if(!S.alt||!confirm('ลบเส้นทางสำรอง?'))return;if((S.ui.route||'main')==='alt'){syncEnds();S.pts=S.alt}
-  S.alt=null;S.ui.route='main';HIST.length=0;lastSnap=null;closeEd();draw();routeBtns()}
+  S.alt=null;S.ui.route='main';HIST.length=FUT.length=0;lastSnap=null;closeEd();draw();routeBtns()}
 // SHOW toggles: isAlt=true -> alternate route
 // each map style (NAVIGATION / แผนที่แผนสมบูรณ์) keeps its own SHOW set
 function shSet(){const st=S.ui.style==='cp'?'cp':'anf';S.ui.sh=S.ui.sh||{};
@@ -684,7 +685,7 @@ function setKind(i,k){const P=S.pts,p=P[i],onMain=(S.ui.route||'main')==='main';
   if(oi>=0){resetBox(i-1);P.splice(i,1);closeEd();draw();return} // shared CP -> keep only the copy on the other route
   if(!ensAlt())return;
   P.splice(i,1);p.tf='CP';const T=S.alt,at=insAt(T,p);
-  T.splice(at,0,p);HIST.length=0;lastSnap=null;closeEd();draw();routeBtns()}
+  T.splice(at,0,p);HIST.length=FUT.length=0;lastSnap=null;closeEd();draw();routeBtns()}
 // CP shared by both routes: same position in the other route (S.alt holds the route not being edited)
 function inOther(p){const T=S.alt;if(!T)return -1;const k=wkey(p);for(let j=1;j<T.length-1;j++)if(wkey(T[j])===k)return j;return -1}
 function ensAlt(){const P=S.pts;if(S.alt)return true;const f=P[0],z=P[P.length-1];if(P.length<2||kind(f.type)!=='PZ'||kind(z.type)!=='LZ'){alert('เลือก PZ และ LZ ก่อน');return false}
@@ -859,7 +860,7 @@ function srShow(p){if(!p)return;$('srR').innerHTML='';const h=srPopup(p);
   map.flyTo([p.lat,p.lon],Math.max(map.getZoom(),11));map.once('moveend',()=>srMk&&srMk.openPopup())}
 function srAdd(){const c=window.srCur;if(!c||editLocked())return;$('fName').value=c.nm;addPt(c.p.lat,c.p.lon);map.closePopup();if(srMk){map.removeLayer(srMk);srMk=null}}
 $('kt').oninput=draw;
-document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'&&!/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)){e.preventDefault();undo()}});
+document.addEventListener('keydown',e=>{const k=e.key.toLowerCase();if((e.ctrlKey||e.metaKey)&&(k==='z'||k==='y')&&!/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)){e.preventDefault();(k==='y'||e.shiftKey)?redo():undo()}});
 // ---- offline cache (service worker) ----
 async function cacheInfo(){try{const k=await caches.open('tiles').then(c=>c.keys());const e=await navigator.storage?.estimate?.();
   $('cacheInfo').textContent=`เก็บแล้ว ${k.length} ชิ้น`+(e?` · ${(e.usage/1048576).toFixed(0)} MB`:'')}catch(e){$('cacheInfo').textContent='offline ใช้ได้เมื่อเปิดผ่าน https'}}
@@ -895,7 +896,7 @@ function guessType(name,i,n){const m=/^(PZ|LZ|CP\d*|SP|RP)\b/i.exec(name||'');if
 function setPts(arr){arr=arr.filter(p=>has(p.lat)&&has(p.lon)&&isFinite(+p.lat)&&isFinite(+p.lon)&&Math.abs(+p.lat)<=90&&Math.abs(+p.lon)<=180); // skip blank/bad rows (NaN breaks the map)
   if(!arr.length)return alert('ไม่พบจุดที่มีพิกัดถูกต้องในไฟล์');const n=arr.length;S.pts=arr.map((p,i)=>{const t=p.type||guessType(p.name,i,n);
   let nm=p.name||'';if(nm.toUpperCase().startsWith(t))nm=nm.slice(t.length).trim();return {type:'CP',tf:'CP',ord:i,name:nm,lat:+p.lat,lon:+p.lon,alt:p.alt||''}});
-  S.alt=null;S.ui.route='main';HIST.length=0;lastSnap=null;routeBtns();
+  S.alt=null;S.ui.route='main';HIST.length=FUT.length=0;lastSnap=null;routeBtns();
   draw();if(n)map.fitBounds(S.pts.map(p=>[p.lat,p.lon]),{padding:[80,80]});}
 function parseCSV(t){const rows=t.replace(/^\uFEFF/,'').trim().split(/\r?\n/).filter(r=>r.trim()).map(r=>r.split(',').map(x=>x.trim()));const h=rows.shift().map(s=>s.trim().toLowerCase());
   const g=(r,k)=>r[h.findIndex(x=>x.startsWith(k))];return rows.map(r=>({type:g(r,'type'),name:g(r,'name'),lat:g(r,'lat'),lon:g(r,'lon'),alt:g(r,'alt')}));}
