@@ -42,7 +42,7 @@ body.hide #side{display:none}
 #pvw figure{margin:0;text-align:center}#pvw img{width:100%;height:auto;background:#fff;display:block;box-shadow:0 2px 8px rgba(0,0,0,.5)}#pvw figcaption{font-size:12px;color:var(--mu);margin-top:4px}
 @media print{body.prtmode #pvw{display:none!important}}
 #expM{display:none}#expM.on{display:flex}
-.b3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}.b3 button{margin:0;padding:9px 4px;font-weight:bold}
+.b3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}.b3 button{margin:0;padding:9px 4px;font-weight:bold}.b4{grid-template-columns:repeat(4,minmax(0,1fr))}.b4 button{padding:9px 2px;font-size:12px;white-space:nowrap}
 @media print{#tog{display:none}}
 #hdr{padding:14px 14px 10px;border-bottom:1px solid var(--ln)}#hdr b{font-size:18px}#hdr small{display:block;margin-top:4px;color:var(--cy);font:11px Consolas,monospace;letter-spacing:.5px}
 #srch{display:flex;gap:6px;margin-top:8px}#srch input{flex:1;min-width:0;font-family:inherit;padding:7px 9px}#srch button{margin:0;flex:none}
@@ -259,9 +259,9 @@ html{background:#232529}
  </fieldset>
  <fieldset><legend>FUNCTION</legend>
   <input type="file" id="imp" accept=".csv,.kml,.kmz,.gpx" hidden onchange="importFile(this.files[0]).catch(()=>alert('อ่านไฟล์ไม่ได้'));this.value=''">
-  <div class="b3" style="grid-template-columns:repeat(4,1fr)"><button class="pri" onclick="imp.click()" title="CSV / KML / KMZ / GPX">IMPORT</button><button onclick="$('expM').classList.toggle('on')">EXPORT ▾</button><button onclick="openSlide()" title="Mission Overview 16:9 PNG">SLIDE</button><button onclick="openDraft()" title="ดราฟแผนสมบูรณ์ 2 หน้า: Word / PDF / PNG">DATA</button></div>
+  <div class="b3 b4"><button class="pri" onclick="imp.click()" title="CSV / KML / KMZ / GPX">IMPORT</button><button onclick="$('expM').classList.toggle('on')">EXPORT ▾</button><button onclick="openDraft()" title="ดราฟแผนสมบูรณ์ 2 หน้า: Word / PDF / PNG">DOC PLAN</button><button onclick="openSlide()" title="Mission Overview 16:9 PNG">SLIDE</button></div>
   <div id="expM" class="seg" style="margin:6px 0 0"><button onclick="expAs('kml')">KML</button><button onclick="expAs('kmz')">KMZ</button><button onclick="expAs('gpx')">GPX</button><button onclick="expAs('csv')">CSV</button></div>
-  <div class="b3" style="grid-template-columns:repeat(4,1fr)"><button onclick="undo()" title="Ctrl+Z">↶ UNDO</button><button onclick="redo()" title="Ctrl+Y / Ctrl+Shift+Z">↷ REDO</button><button onclick="reverseRoute()" title="กลับทิศเส้นทาง">⇄ BACK TRACK</button><button onclick="clearAll()">CLEAR</button></div>
+  <div class="b3 b4"><button onclick="undo()" title="Ctrl+Z">UNDO</button><button onclick="redo()" title="Ctrl+Y / Ctrl+Shift+Z">REDO</button><button onclick="reverseRoute()" title="กลับทิศเส้นทาง">BACK TRACK</button><button onclick="clearAll()">CLEAR</button></div>
  </fieldset>
  <fieldset><legend>Export Map (พิมพ์ขนาดจริง แบ่งแผ่น)</legend>
   <div class="row"><div><div class="sm">มาตราส่วน 1:</div><select id="pS" onchange="prUpd();pvApply()"><option value="50000">50,000<option value="100000">100,000<option value="250000" selected>250,000<option value="500000">500,000<option value="1000000">1,000,000</select></div>
@@ -1026,7 +1026,7 @@ function dfLoad(){let o={};try{o=JSON.parse(localStorage.getItem('draftF'))||{}}
 function dfSave(){const o={};DF_F.forEach(k=>o[k]=$('df_'+k).value);try{localStorage.setItem('draftF',JSON.stringify(o))}catch(e){}}
 function openDraft(){if(S.pts.length<2)return alert('ต้องมี waypoint อย่างน้อย 2 จุดก่อนทำดราฟแผน');
   if(!$('dft'))document.body.insertAdjacentHTML('beforeend',`<div id="dft"><div class="sbox">
-    <div class="shd"><b>DATA · ดราฟแผนสมบูรณ์ 2 หน้า · เลือกชนิดไฟล์</b><button onclick="$('dft').remove()">✕</button></div>
+    <div class="shd"><b>DOC PLAN · ดราฟแผนสมบูรณ์ 2 หน้า · เลือกชนิดไฟล์</b><button onclick="$('dft').remove()">✕</button></div>
     <div class="sfm">${S.alt&&S.alt.length>1?'<label class="w">ใช้ค่าจากเส้นทาง<select id="df_rt" style="width:100%;margin-top:2px" onchange="dfRt()"><option value="main">เส้นทางหลัก</option><option value="alt">เส้นทางสำรอง</option></select></label>':''}<label class="w">หัวเรื่อง<input id="df_ttl" onchange="dfSave()"></label>
       <label>FLIGHT ALT (ft)<input id="df_falt" inputmode="numeric" onchange="dfSave()"></label>
       <button class="w" id="df_apb" onclick="dfApFill()" style="grid-column:1/-1;margin:0">เติม NOTE อัตโนมัติ (ความถี่ PZ / RADAR / LZ)</button>
