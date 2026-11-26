@@ -1135,7 +1135,7 @@ function prCfg(){const [w,h]=PAPER[$('pP').value],l=$('pO').value==='l',m=Math.m
   const base=+$('pS').value,f=Math.min(1000,Math.max(10,+$('pF').value||100));
   return {S:Math.round(base*100/f),base,f,ov:Math.max(0,+$('pOv').value||0)*10,pw:(l?h:w)-2*m,ft:$('pLb').checked?8:0,ph:(l?w:h)-2*m-0.5-($('pLb').checked?8:0),m,paper:$('pP').value,land:l}} // mm; -0.5 avoids a spill page
 // ตามแนวเส้นทางบิน: bearing (deg, -90..90) that points to the top of each sheet = the long side of the paper along the longest leg
-function prRot(){if(!S.ui.prRot)return 0;let best=null,bl=-1;const A=S.pts;
+function prRot(){if(!S.ui.prRot)return 0;let best=null,bl=-1;const ca=(S.ui.route||'main')==='alt',A=!showR(ca)&&S.alt&&S.alt.length>1&&showR(!ca)?S.alt:S.pts; // only one route shown -> align to that route
   for(let i=1;i<A.length;i++){const a=MERC.project(L.latLng(A[i-1].lat,A[i-1].lon)),b=MERC.project(L.latLng(A[i].lat,A[i].lon)),l=Math.hypot(b.x-a.x,b.y-a.y);
     if(l>bl){bl=l;best=Math.atan2(b.x-a.x,b.y-a.y)*180/Math.PI}}
   if(best===null||!bl)return 0;let u=best-($('pO').value==='l'?90:0);u=((u%180)+180)%180;if(u>90)u-=180;return Math.round(u*10)/10}
