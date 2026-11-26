@@ -197,18 +197,21 @@ html{background:#232529}
 }
 #upd{display:none;position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:3000;background:#F2B43C;color:#111;font:bold 14px sans-serif;padding:10px 16px;border-radius:20px;box-shadow:0 3px 12px #0008;cursor:pointer}
 @media print{#upd{display:none!important}}
-#lock{position:fixed;inset:0;z-index:99999;background:#232529;display:flex;align-items:center;justify-content:center;font:16px sans-serif;color:#eee}
-#lock form{background:#2d3036;padding:24px 22px;border-radius:12px;box-shadow:0 6px 24px #0009;width:min(300px,86vw);text-align:center}
+#lock{position:fixed;inset:0;z-index:99999;background:#000a;display:none;align-items:center;justify-content:center;font:16px sans-serif;color:#eee}
+#lock.on{display:flex}#lock .x{position:absolute;right:8px;top:6px;width:auto;background:none;color:#aaa;font-size:20px;padding:4px 8px}
+#lock form{position:relative;background:#2d3036;padding:24px 22px;border-radius:12px;box-shadow:0 6px 24px #0009;width:min(300px,86vw);text-align:center}
 #lock input{width:100%;font-family:inherit;box-sizing:border-box;font-size:16px;padding:10px;margin:14px 0 10px;border-radius:8px;border:1px solid #555;background:#1b1d21;color:#fff}
 #lock button{width:100%;font:bold 16px sans-serif;padding:10px;border:0;border-radius:8px;background:#F2B43C;color:#111;cursor:pointer}
 #lock .err{color:#ff7b7b;font-size:14px;min-height:18px;margin-top:8px}
 @media print{#lock{display:none!important}}
 </style></head><body>
-<div id="lock" onclick="if(!event.target.closest('input,button'))f2cpBio()"><form id="lockF" method="post" action="#" autocomplete="on" onsubmit="event.preventDefault();f2cpLogin()"><img src="icon.svg" alt="" style="width:48px;height:48px"><div style="font-weight:bold;font-size:18px;margin-top:6px">FalCon2CP</div>
+<div id="lock" onclick="if(event.target===this)f2cpClose()"><form id="lockF" method="post" action="#" autocomplete="on" onsubmit="event.preventDefault();f2cpLogin()"><button type="button" class="x" onclick="f2cpClose()" aria-label="ปิด">✕</button><img src="icon.svg" alt="" style="width:48px;height:48px"><div style="font-weight:bold;font-size:18px;margin-top:6px">FalCon2CP</div>
  <input id="lockUser" name="username" type="text" value="FalCon2CP" autocomplete="username" tabindex="-1" aria-hidden="true" readonly style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;margin:0;padding:0;border:0"><!-- hidden: lets password managers save the password under one name -->
  <input id="lockPw" name="password" type="password" placeholder="รหัสผ่าน" aria-label="รหัสผ่าน" autocomplete="current-password" oninput="if(f2cpHash(this.value)===(window.CONFIG||{}).PASS_HASH)f2cpLogin()"><button type="submit">เข้าสู่ระบบ</button><div class="err" id="lockErr"></div></form></div>
 <script>
-// ---- Login gate (simple shared password; hash in config.js PASS_HASH; remembered on this device) ----
+// ---- Map login (shared password; hash in config.js PASS_HASH): JOG / TPC (CONFIG.MAPS) open only after login; OSM is the default ----
+// Asked on every app open (nothing remembered). Correct password logs in without pressing the button (also when Keychain fills it).
+// First password login registers a local passkey (WebAuthn, Face ID / fingerprint); later the LOGIN button asks for it at once.
 function f2cpHash(m){ // SHA-256 hex, pure JS (works on file:// where crypto.subtle is missing)
  const K=[],H=[];let n=2,c=0;const fr=x=>(x-Math.floor(x))*4294967296|0;
  while(c<64){let p=1;for(let i=2;i*i<=n;i++)if(n%i==0){p=0;break}if(p){if(c<8)H[c]=fr(Math.pow(n,1/2));K[c++]=fr(Math.pow(n,1/3))}n++}
@@ -222,14 +225,16 @@ function f2cpHash(m){ // SHA-256 hex, pure JS (works on file:// where crypto.sub
    h=g;g=f;f=e;e=d+t1|0;d=cc;cc=bb;bb=a;a=t1+t2|0}
   [a,bb,cc,d,e,f,g,h].forEach((v,i)=>H[i]=H[i]+v|0)}
  return H.map(v=>(v>>>0).toString(16).padStart(8,'0')).join('')}
-// Login asked on every app open (nothing remembered). Fast paths: correct password logs in without pressing the button (also when
-// Keychain/password manager fills it); after the first password login the device registers a local passkey (WebAuthn, Face ID /
-// fingerprint) and later opens ask for it right away. No server: the passkey only proves "this device's owner", like the password.
 const f2cpPkKey='f2cpPk',f2cpRnd=n=>crypto.getRandomValues(new Uint8Array(n)),f2cpPH=()=>(window.CONFIG||{}).PASS_HASH;
 const f2cpB64=b=>btoa(String.fromCharCode(...new Uint8Array(b))),f2cpUnB64=t=>Uint8Array.from(atob(t),c=>c.charCodeAt(0));
+window.f2cpLocked=!!f2cpPH();
+const f2cpProt=u=>window.f2cpLocked&&((window.CONFIG||{}).MAPS||[]).some(m=>m.url===u); // map that needs login
 function f2cpPk(){try{const o=JSON.parse(localStorage.getItem(f2cpPkKey));return o&&o.h===f2cpPH()?o:null}catch(e){return null}} // password change = register again
+function f2cpOpen(){const l=document.getElementById('lock');if(!l)return;l.classList.add('on');document.getElementById('lockErr').textContent='';
+ if(f2cpPk()&&window.PublicKeyCredential)f2cpBio();else setTimeout(()=>document.getElementById('lockPw').focus(),50)}
+function f2cpClose(){const l=document.getElementById('lock');if(l)l.classList.remove('on')}
 function f2cpUnlock(){const l=document.getElementById('lock');if(!l)return;setTimeout(()=>l.remove(),0); // removing the submitted form lets Safari offer "Save Password"
- window.f2cpLocked=false;if(typeof setBase=='function')setBase()}
+ window.f2cpLocked=false;if(typeof f2cpMaps=='function')f2cpMaps()}
 function f2cpLogin(){const pw=document.getElementById('lockPw');if(!document.getElementById('lock'))return;
  if(!pw.value&&f2cpPk())return f2cpBio(); // empty password + passkey: the one button starts Face ID / fingerprint
  if(f2cpHash(pw.value)!==f2cpPH()){document.getElementById('lockErr').textContent='รหัสผ่านไม่ถูกต้อง';pw.select();return}
@@ -243,12 +248,8 @@ function f2cpLogin(){const pw=document.getElementById('lockPw');if(!document.get
 let f2cpBusy=false;
 function f2cpBio(){const k=f2cpPk(),e=document.getElementById('lockErr');if(!k||f2cpBusy)return;f2cpBusy=true;e.textContent='';
  navigator.credentials.get({publicKey:{challenge:f2cpRnd(32),allowCredentials:[{type:'public-key',id:f2cpUnB64(k.id),transports:['internal','hybrid']}],userVerification:'required',timeout:60000}})
-  .then(c=>{if(c)f2cpUnlock()}).catch(()=>{e.textContent='กด เข้าสู่ระบบ เพื่อสแกนหน้า/นิ้ว'}).finally(()=>{f2cpBusy=false})} // blocked without a tap (some browsers) or cancelled: tap anywhere to retry
-function f2cpLogout(){location.reload()}
-(()=>{const ph=f2cpPH();try{localStorage.removeItem('f2cpAuth')}catch(e){} // old builds remembered the login
- if(!ph)return document.getElementById('lock').remove();window.f2cpLocked=true;
- if(f2cpPk()&&window.PublicKeyCredential)f2cpBio() // ask Face ID / fingerprint at once
- else setTimeout(()=>document.getElementById('lockPw').focus(),50)})();
+  .then(c=>{if(c)f2cpUnlock()}).catch(()=>{e.textContent='กด เข้าสู่ระบบ เพื่อสแกนหน้า/นิ้ว'}).finally(()=>{f2cpBusy=false})}
+try{localStorage.removeItem('f2cpAuth')}catch(e){} // old builds remembered the login
 </script>
 <div id="side">
  <div id="hdr"><b><img src="icon.svg" alt="" style="width:22px;height:22px;vertical-align:-4px;margin-right:6px">FalCon2CP</b><small>ROUTE PLANNER · PZ / CP / LZ</small>
@@ -265,7 +266,7 @@ function f2cpLogout(){location.reload()}
  <fieldset><legend>MAP</legend>
   <select id="mapSel" style="width:100%" onchange="pickMap(this.value)"></select>
   <label><input type="checkbox" id="offl" checked onchange="save()"> เก็บแผนที่ที่เปิดดูไว้ใช้ offline</label>
-  <div class="row" style="gap:6px;margin:4px 0"><button class="pri" onclick="lmPick()">📁 IMPORT MAP</button><button id="lmDel" onclick="lmDel()" style="display:none;flex:0 0 auto" title="ลบแผนที่นี้ออกจากเครื่อง">ลบ</button></div>
+  <div class="row" style="gap:6px;margin:4px 0"><button class="pri" id="mapLogin" onclick="f2cpOpen()" title="เข้าสู่ระบบเพื่อเปิดแผนที่ JOG 1:250,000 และ TPC 1:500,000">🔑 LOGIN</button><button class="pri" onclick="lmPick()">📁 IMPORT MAP</button><button id="lmDel" onclick="lmDel()" style="display:none;flex:0 0 auto" title="ลบแผนที่นี้ออกจากเครื่อง">ลบ</button></div>
   <input type="file" id="lmIn" accept=".pmtiles" multiple style="display:none" onchange="lmAdd(this.files);this.value=''">
   <div class="sm" id="lmInfo"></div>
   <div class="sm" id="cacheInfo">-</div>
@@ -400,7 +401,7 @@ function pmLayer(u){const f=u.startsWith('local:')&&LM[lmName(u)];
 function pickMap(v){if(v&&v.startsWith('local:')&&!LM[lmName(v)]&&LH[lmName(v)]){const n=lmName(v);LH[n].requestPermission({mode:'read'}).then(r=>r==='granted'&&LH[n].getFile()).then(f=>{if(f){LM[n]=f;$('lmInfo').textContent=`เปิด ${n} แล้ว`;if($('tileUrl').value===v)setBase()}else lmAsk(n)}).catch(()=>lmAsk(n))}
   if(/500k/i.test(v))$('pS').value='500000';else if(/250k/i.test(v))$('pS').value='250000';if(v==='osm'){$('tileUrl').value=OSM}else if(v==='sat'){$('tileUrl').value=SAT}else if(v)$('tileUrl').value=v;setBase();$('lmDel').style.display=$('tileUrl').value.startsWith('local:')?'':'none'}
 const MINZ=3;
-function setBase(){ if(base)map.removeLayer(base);base=null;if(window.f2cpLocked)return; // no map tiles load before login
+function setBase(){ if(base)map.removeLayer(base);base=null;if(f2cpProt($('tileUrl').value)){$('tileUrl').value=OSM;$('mapSel').value='osm'} // JOG/TPC need login
   const u=$('tileUrl').value;map.setMinZoom(MINZ);
   base=u===OSM?L.tileLayer(OSM,{maxZoom:19,crossOrigin:true,attribution:'© OpenStreetMap'})
     :u===SAT?L.tileLayer(SAT,{maxZoom:19,maxNativeZoom:18,crossOrigin:true,attribution:'Imagery © Esri, Maxar, Earthstar Geographics'})
@@ -1359,7 +1360,13 @@ pmSet(S.ui.prAll);
 $('offl').checked=S.ui.off;
 if(!S.pts.length&&!localStorage.getItem('routeS'))S.pts=[{type:'PZ',name:'ท่าอากาศยานร้อยเอ็ด',lat:16.1168,lon:103.7741,alt:'1100'},{type:'CP2',name:'สนาม ฮ. พล.ร.6',lat:16.105,lon:103.545,alt:'1100'},{type:'LZ',name:'สนาม ฮ. รร.สารคามพิทยาคม',lat:16.184,lon:103.3,alt:''}];
 if(qp||!S.cfg||!/^(https?|local):/.test($('tileUrl').value))$('tileUrl').value=qm||$('tileUrl').value;
-[...(window.CONFIG&&CONFIG.MAPS||[]),{name:'OpenStreetMap (offline cache)',url:'osm'},{name:'ภาพดาวเทียม (Esri)',url:'sat'}].forEach(m=>$('mapSel').add(new Option(m.name,m.url)));
+const f2cpWant=((window.CONFIG&&CONFIG.MAPS)||[]).some(m=>m.url===$('tileUrl').value)?$('tileUrl').value:null; // JOG/TPC chosen last time: reopen after login
+if(f2cpProt($('tileUrl').value))$('tileUrl').value=OSM; // not logged in: start on OSM
+[...(window.f2cpLocked?[]:(window.CONFIG&&CONFIG.MAPS||[])),{name:'OpenStreetMap (offline cache)',url:'osm'},{name:'ภาพดาวเทียม (Esri)',url:'sat'}].forEach(m=>$('mapSel').add(new Option(m.name,m.url)));
+if(!window.f2cpLocked||!f2cpPH())$('mapLogin').remove();
+function f2cpMaps(){const M=(window.CONFIG&&CONFIG.MAPS)||[];if(!M.length)return;$('mapLogin')?.remove(); // after login: add JOG / TPC and open one
+  M.slice().reverse().forEach(m=>{if(![...$('mapSel').options].some(o=>o.value===m.url))$('mapSel').add(new Option(m.name,m.url),0)});
+  const u=f2cpWant||M[0].url;$('mapSel').value=u;pickMap(u)}
 $('mapSel').add(new Option('-- URL เอง --',''));$('mapSel').value=$('tileUrl').value===OSM?'osm':$('tileUrl').value===SAT?'sat':$('tileUrl').value;
 globSizes();setMode(S.ui.mode);routeBtns();setStyle(S.ui.style);setBase();togTxt();if(S.pts.length)map.fitBounds(S.pts.map(p=>[p.lat,p.lon]),{padding:innerWidth<700?[30,30]:[120,120]});else map.setView([16.1168,103.7741],9);cacheInfo();lmInit();setAirports(S.ui.airports);
 // iOS Home Screen app: 100%/100vh leave a gap at the bottom (short by the status bar) -> size the app to the real screen (as AirNavFlow)
