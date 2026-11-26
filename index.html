@@ -39,7 +39,7 @@ body.hide #side{display:none}
 #pvw .phd{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}#pvw .phd button{width:auto;margin:0;padding:4px 10px}
 #pvw .pbt{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}#pvw .pbt button{margin:0}
 #pvw .pgs{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
-#pvw figure{margin:0;text-align:center}#pvw img{width:100%;height:auto;background:#fff;display:block;box-shadow:0 2px 8px rgba(0,0,0,.5)}#pvw figcaption{font-size:12px;color:var(--mu);margin-top:4px}
+#pvw figure{margin:0;text-align:center}#pvw .pw{position:relative;cursor:crosshair}#pvw .pw .na{position:absolute;width:auto;box-shadow:none;background:none;pointer-events:none}#pvw .nah{font-size:12px;color:var(--mu);margin:-4px 0 8px}#pvw .nah a{color:var(--au);font-weight:bold}#pvw img{width:100%;height:auto;background:#fff;display:block;box-shadow:0 2px 8px rgba(0,0,0,.5)}#pvw figcaption{font-size:12px;color:var(--mu);margin-top:4px}
 @media print{body.prtmode #pvw{display:none!important}}
 #expM{display:none}#expM.on{display:flex}
 .b3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}.b3 button{margin:0;padding:9px 4px;font-weight:bold}.b4{grid-template-columns:repeat(4,minmax(0,1fr))}.b4 button{padding:9px 2px;font-size:12px;white-space:nowrap}
@@ -1257,18 +1257,37 @@ async function previewPages(mode){try{
     const cv=await html2canvas(pgs[i],{scale:2,useCORS:true,backgroundColor:'#fff',logging:false,
       onclone:d=>{d.body.classList.add('pdfcap');d.getElementById('prt').style.left='0'}});
     imgs.push(cv.toDataURL('image/jpeg',0.9));cv.width=cv.height=0}
-  PV={c,imgs};$('pInfo').textContent=`ตัวอย่าง ${imgs.length} แผ่น`;
+  PV={c,imgs,na:imgs.map(()=>null)};$('pInfo').textContent=`ตัวอย่าง ${imgs.length} แผ่น`;
   const d=$('pvw')||document.body.appendChild(Object.assign(document.createElement('div'),{id:'pvw'}));
   d.innerHTML=`<div class="pbox"><div class="phd"><b>ตัวอย่างก่อน${mode=='print'?'พิมพ์':'บันทึก PDF'} · ${imgs.length} แผ่น · 1:${c.S.toLocaleString()} · ${c.paper} ${c.land?'แนวนอน':'แนวตั้ง'}</b><button onclick="pvClose()">✕</button></div>
     <div class="pbt"><button class="${mode=='pdf'?'pri':''}" onclick="pvPDF()">บันทึก PDF</button><button class="${mode=='print'?'pri':''}" onclick="pvPrint()">พิมพ์</button><button onclick="pvClose()">ยกเลิก</button></div>
-    <div class="pgs">${imgs.map((u,k)=>`<figure><img src="${u}" style="aspect-ratio:${c.pw}/${c.ph+c.ft}"><figcaption>แผ่น ${k+1}</figcaption></figure>`).join('')}</div></div>`;
+    <div class="nah">ทิศเหนือ: คลิกบนแผ่นเพื่อวาง/ย้ายสัญลักษณ์ · คลิกซ้ำที่เดิมเพื่อลบ · <a href="#" onclick="naAll(1);return false">ใส่ทุกแผ่น</a> · <a href="#" onclick="naAll(0);return false">ลบทั้งหมด</a></div>
+    <div class="pgs">${imgs.map((u,k)=>`<figure><div class="pw" onclick="naClick(event,${k})"><img src="${u}" style="aspect-ratio:${c.pw}/${c.ph+c.ft}"></div><figcaption>แผ่น ${k+1}</figcaption></figure>`).join('')}</div></div>`;
   d.style.display='flex'}catch(e){alert('สร้างตัวอย่างไม่สำเร็จ: '+e.message);$('pInfo').textContent='สร้างตัวอย่างไม่สำเร็จ'}}
+// ---- north arrow (สัญลักษณ์ทิศเหนือ): placed per sheet in the preview, turned to true north of a tilted sheet ----
+const NA_MM=36,naSvg=()=>'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="-70 -70 140 140" width="200" height="200"><g transform="rotate(${-(PV&&PV.c.rot||0)})">
+ <circle cx="0" cy="0" r="22" fill="none" stroke="#000" stroke-width="8"/><circle cx="0" cy="0" r="22" fill="none" stroke="#fff" stroke-width="3" stroke-dasharray="20 14.5"/>
+ <path d="M0-52L-8 0 0 44Z" fill="#000"/><path d="M0-52L8 0 0 44Z" fill="#fff" stroke="#000" stroke-width="2" stroke-linejoin="round"/>
+ <text x="0" y="-56" text-anchor="middle" font-family="Arial,sans-serif" font-weight="bold" font-size="18" fill="#000" stroke="#fff" stroke-width="3" paint-order="stroke">N</text></g></svg>`);
+function naDraw(){const f=[...document.querySelectorAll('#pvw .pw')];if(!PV)return;const {c}=PV,u=naSvg(),wPct=NA_MM*100/c.pw;
+  f.forEach((w,k)=>{w.querySelector('.na')?.remove();const a=PV.na[k];if(!a)return;
+    w.insertAdjacentHTML('beforeend',`<img class="na" src="${u}" style="width:${wPct}%;left:${a[0]*100-wPct/2}%;top:${a[1]*100}%;transform:translateY(-50%)">`)})}
+function naClick(e,k){if(!PV)return;const r=e.currentTarget.getBoundingClientRect(),x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height,a=PV.na[k],c=PV.c;
+  const near=a&&Math.abs(x-a[0])*c.pw<NA_MM/2&&Math.abs(y-a[1])*(c.ph+c.ft)<NA_MM/2;PV.na[k]=near?null:[x,y];naDraw()}
+function naAll(on){if(!PV)return;const c=PV.c;PV.na=PV.imgs.map(()=>on?[1-(NA_MM/2+6)/c.pw,(NA_MM/2+6)/(c.ph+c.ft)]:null);naDraw()}
+// page images with the arrow drawn in (for PDF / print)
+async function naImgs(){const {c,imgs,na}=PV;if(!na.some(Boolean))return imgs;
+  const ar=await new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src=naSvg()});
+  return Promise.all(imgs.map((u,k)=>!na[k]?u:new Promise(ok=>{const im=new Image();im.onload=()=>{const cv=document.createElement('canvas');cv.width=im.width;cv.height=im.height;
+    const g=cv.getContext('2d');g.drawImage(im,0,0);const w=NA_MM*im.width/c.pw,h=w;g.drawImage(ar,na[k][0]*im.width-w/2,na[k][1]*im.height-h/2,w,h);ok(cv.toDataURL('image/jpeg',0.9))};im.src=u})))}
 function pvClose(){const d=$('pvw');if(d){d.style.display='none';d.innerHTML=''}PV=null;prUpd()}
-function pvPDF(){if(!PV)return;const {c,imgs}=PV;
+async function pvPDF(){if(!PV)return;const {c}=PV,imgs=await naImgs();
   const pdf=new jspdf.jsPDF({unit:'mm',format:c.paper.toLowerCase(),orientation:c.land?'l':'p',compress:true});
   imgs.forEach((u,i)=>{if(i)pdf.addPage();pdf.addImage(u,'JPEG',c.m,c.m,c.pw,c.ph+c.ft,undefined,'FAST')});
   pdf.save(`map_1-${Math.round(c.S/1000)}k_${c.paper}_${imgs.length}p.pdf`);$('pInfo').textContent=`บันทึก PDF ${imgs.length} แผ่นแล้ว`}
-function pvPrint(){if(!PV)return;$('pInfo').textContent=`พิมพ์ ${PV.imgs.length} แผ่น`;document.body.classList.add('prtmode');setTimeout(()=>window.print(),300)}
+async function pvPrint(){if(!PV)return;const {c}=PV,imgs=await naImgs();prMaps.forEach(m=>m.remove());prMaps=[];
+  $('prt').innerHTML=imgs.map(u=>`<div class="pg" style="width:${c.pw}mm"><img src="${u}" style="display:block;width:${c.pw}mm;height:${c.ph+c.ft}mm"></div>`).join('');
+  $('pInfo').textContent=`พิมพ์ ${imgs.length} แผ่น`;document.body.classList.add('prtmode');setTimeout(()=>window.print(),300)}
 const exportPDF=()=>previewPages('pdf');
 addEventListener('afterprint',()=>{document.body.classList.remove('prtmode');prUpd()});
 // ---- init ----
