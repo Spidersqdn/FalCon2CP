@@ -222,11 +222,11 @@ function f2cpHash(m){ // SHA-256 hex, pure JS (works on file:// where crypto.sub
   [a,bb,cc,d,e,f,g,h].forEach((v,i)=>H[i]=H[i]+v|0)}
  return H.map(v=>(v>>>0).toString(16).padStart(8,'0')).join('')}
 function f2cpLogin(){const h=f2cpHash(document.getElementById('lockPw').value);
- if(h===(window.CONFIG||{}).PASS_HASH){try{localStorage.setItem('f2cpAuth',h)}catch(e){}document.getElementById('lock').remove()}
+ if(h===(window.CONFIG||{}).PASS_HASH){try{localStorage.setItem('f2cpAuth',h)}catch(e){}document.getElementById('lock').remove();window.f2cpLocked=false;if(typeof setBase=='function')setBase()}
  else{document.getElementById('lockErr').textContent='รหัสผ่านไม่ถูกต้อง';document.getElementById('lockPw').select()}}
 function f2cpLogout(){try{localStorage.removeItem('f2cpAuth')}catch(e){}location.reload()}
 (()=>{const ph=(window.CONFIG||{}).PASS_HASH;let a=null;try{a=localStorage.getItem('f2cpAuth')}catch(e){}
- if(!ph||a===ph)document.getElementById('lock').remove();else setTimeout(()=>document.getElementById('lockPw').focus(),50)})();
+ if(!ph||a===ph)document.getElementById('lock').remove();else{window.f2cpLocked=true;setTimeout(()=>document.getElementById('lockPw').focus(),50)}})();
 </script>
 <div id="side">
  <div id="hdr"><b><img src="icon.svg" alt="" style="width:22px;height:22px;vertical-align:-4px;margin-right:6px">FalCon2CP</b><small>ROUTE PLANNER · PZ / CP / LZ</small>
@@ -378,7 +378,8 @@ function pmLayer(u){const f=u.startsWith('local:')&&LM[lmName(u)];
 function pickMap(v){if(v&&v.startsWith('local:')&&!LM[lmName(v)]&&LH[lmName(v)]){const n=lmName(v);LH[n].requestPermission({mode:'read'}).then(r=>r==='granted'&&LH[n].getFile()).then(f=>{if(f){LM[n]=f;$('lmInfo').textContent=`เปิด ${n} แล้ว`;if($('tileUrl').value===v)setBase()}else lmAsk(n)}).catch(()=>lmAsk(n))}
   if(/500k/i.test(v))$('pS').value='500000';else if(/250k/i.test(v))$('pS').value='250000';if(v==='osm'){$('tileUrl').value=OSM}else if(v==='sat'){$('tileUrl').value=SAT}else if(v)$('tileUrl').value=v;setBase();$('lmDel').style.display=$('tileUrl').value.startsWith('local:')?'':'none'}
 const MINZ=3;
-function setBase(){ if(base)map.removeLayer(base);const u=$('tileUrl').value;map.setMinZoom(MINZ);
+function setBase(){ if(base)map.removeLayer(base);base=null;if(window.f2cpLocked)return; // no map tiles load before login
+  const u=$('tileUrl').value;map.setMinZoom(MINZ);
   base=u===OSM?L.tileLayer(OSM,{maxZoom:19,crossOrigin:true,attribution:'© OpenStreetMap'})
     :u===SAT?L.tileLayer(SAT,{maxZoom:19,maxNativeZoom:18,crossOrigin:true,attribution:'Imagery © Esri, Maxar, Earthstar Geographics'})
     :/\.pmtiles$/i.test(u)?pmLayer(u)
