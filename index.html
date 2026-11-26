@@ -204,9 +204,9 @@ html{background:#232529}
 #lock .err{color:#ff7b7b;font-size:14px;min-height:18px;margin-top:8px}
 @media print{#lock{display:none!important}}
 </style></head><body>
-<div id="lock"><form id="lockF" method="post" action="#" autocomplete="on" onsubmit="event.preventDefault();f2cpLogin()"><img src="icon.svg" alt="" style="width:48px;height:48px"><div style="font-weight:bold;font-size:18px;margin-top:6px">FalCon2CP</div>
+<div id="lock" onclick="if(!event.target.closest('input,button'))f2cpBio()"><form id="lockF" method="post" action="#" autocomplete="on" onsubmit="event.preventDefault();f2cpLogin()"><img src="icon.svg" alt="" style="width:48px;height:48px"><div style="font-weight:bold;font-size:18px;margin-top:6px">FalCon2CP</div>
  <input id="lockUser" name="username" type="text" value="FalCon2CP" autocomplete="username" tabindex="-1" aria-hidden="true" readonly style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;margin:0;padding:0;border:0"><!-- hidden: lets password managers save the password under one name -->
- <input id="lockPw" name="password" type="password" placeholder="รหัสผ่าน" aria-label="รหัสผ่าน" autocomplete="current-password"><button type="submit">เข้าสู่ระบบ</button><div class="err" id="lockErr"></div></form></div>
+ <input id="lockPw" name="password" type="password" placeholder="รหัสผ่าน" aria-label="รหัสผ่าน" autocomplete="current-password" oninput="if(f2cpHash(this.value)===(window.CONFIG||{}).PASS_HASH)f2cpLogin()"><button type="submit">เข้าสู่ระบบ</button><div class="err" id="lockErr"></div></form></div>
 <script>
 // ---- Login gate (simple shared password; hash in config.js PASS_HASH; remembered on this device) ----
 function f2cpHash(m){ // SHA-256 hex, pure JS (works on file:// where crypto.subtle is missing)
@@ -222,15 +222,33 @@ function f2cpHash(m){ // SHA-256 hex, pure JS (works on file:// where crypto.sub
    h=g;g=f;f=e;e=d+t1|0;d=cc;cc=bb;bb=a;a=t1+t2|0}
   [a,bb,cc,d,e,f,g,h].forEach((v,i)=>H[i]=H[i]+v|0)}
  return H.map(v=>(v>>>0).toString(16).padStart(8,'0')).join('')}
-function f2cpLogin(){const pw=document.getElementById('lockPw'),h=f2cpHash(pw.value); // login is asked on every app open (nothing remembered); browser password manager / Keychain (Face ID, fingerprint) fills it
- if(h===(window.CONFIG||{}).PASS_HASH){
-  try{if(window.PasswordCredential)navigator.credentials.store(new PasswordCredential({id:document.getElementById('lockUser').value||'FalCon2CP',password:pw.value,name:'FalCon2CP'})).catch(()=>{})}catch(e){} // Chrome/Edge save prompt
-  setTimeout(()=>{document.getElementById('lock').remove()},0); // removing the submitted form lets Safari offer "Save Password"
-  window.f2cpLocked=false;if(typeof setBase=='function')setBase()}
- else{document.getElementById('lockErr').textContent='รหัสผ่านไม่ถูกต้อง';pw.select()}}
+// Login asked on every app open (nothing remembered). Fast paths: correct password logs in without pressing the button (also when
+// Keychain/password manager fills it); after the first password login the device registers a local passkey (WebAuthn, Face ID /
+// fingerprint) and later opens ask for it right away. No server: the passkey only proves "this device's owner", like the password.
+const f2cpPkKey='f2cpPk',f2cpRnd=n=>crypto.getRandomValues(new Uint8Array(n)),f2cpPH=()=>(window.CONFIG||{}).PASS_HASH;
+const f2cpB64=b=>btoa(String.fromCharCode(...new Uint8Array(b))),f2cpUnB64=t=>Uint8Array.from(atob(t),c=>c.charCodeAt(0));
+function f2cpPk(){try{const o=JSON.parse(localStorage.getItem(f2cpPkKey));return o&&o.h===f2cpPH()?o:null}catch(e){return null}} // password change = register again
+function f2cpUnlock(){const l=document.getElementById('lock');if(!l)return;setTimeout(()=>l.remove(),0); // removing the submitted form lets Safari offer "Save Password"
+ window.f2cpLocked=false;if(typeof setBase=='function')setBase()}
+function f2cpLogin(){const pw=document.getElementById('lockPw');if(!document.getElementById('lock'))return;
+ if(!pw.value&&f2cpPk())return f2cpBio(); // empty password + passkey: the one button starts Face ID / fingerprint
+ if(f2cpHash(pw.value)!==f2cpPH()){document.getElementById('lockErr').textContent='รหัสผ่านไม่ถูกต้อง';pw.select();return}
+ try{if(window.PasswordCredential)navigator.credentials.store(new PasswordCredential({id:document.getElementById('lockUser').value||'FalCon2CP',password:pw.value,name:'FalCon2CP'})).catch(()=>{})}catch(e){} // Chrome/Edge save prompt
+ if(!f2cpPk()&&window.PublicKeyCredential&&navigator.credentials?.create&&window.isSecureContext)try{ // set up Face ID / fingerprint for next time
+  navigator.credentials.create({publicKey:{rp:{name:'FalCon2CP'},user:{id:f2cpRnd(16),name:'FalCon2CP',displayName:'FalCon2CP'},challenge:f2cpRnd(32),
+   pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],timeout:60000,
+   authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required',residentKey:'discouraged'}}})
+   .then(c=>{if(c)try{localStorage.setItem(f2cpPkKey,JSON.stringify({id:f2cpB64(c.rawId),h:f2cpPH()}))}catch(e){}}).catch(()=>{})}catch(e){}
+ f2cpUnlock()}
+let f2cpBusy=false;
+function f2cpBio(){const k=f2cpPk(),e=document.getElementById('lockErr');if(!k||f2cpBusy)return;f2cpBusy=true;e.textContent='';
+ navigator.credentials.get({publicKey:{challenge:f2cpRnd(32),allowCredentials:[{type:'public-key',id:f2cpUnB64(k.id),transports:['internal','hybrid']}],userVerification:'required',timeout:60000}})
+  .then(c=>{if(c)f2cpUnlock()}).catch(()=>{e.textContent='กด เข้าสู่ระบบ เพื่อสแกนหน้า/นิ้ว'}).finally(()=>{f2cpBusy=false})} // blocked without a tap (some browsers) or cancelled: tap anywhere to retry
 function f2cpLogout(){location.reload()}
-(()=>{const ph=(window.CONFIG||{}).PASS_HASH;try{localStorage.removeItem('f2cpAuth')}catch(e){} // old builds remembered the login
- if(!ph)document.getElementById('lock').remove();else{window.f2cpLocked=true;setTimeout(()=>document.getElementById('lockPw').focus(),50)}})();
+(()=>{const ph=f2cpPH();try{localStorage.removeItem('f2cpAuth')}catch(e){} // old builds remembered the login
+ if(!ph)return document.getElementById('lock').remove();window.f2cpLocked=true;
+ if(f2cpPk()&&window.PublicKeyCredential)f2cpBio() // ask Face ID / fingerprint at once
+ else setTimeout(()=>document.getElementById('lockPw').focus(),50)})();
 </script>
 <div id="side">
  <div id="hdr"><b><img src="icon.svg" alt="" style="width:22px;height:22px;vertical-align:-4px;margin-right:6px">FalCon2CP</b><small>ROUTE PLANNER · PZ / CP / LZ</small>

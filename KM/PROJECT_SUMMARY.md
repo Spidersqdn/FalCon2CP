@@ -90,7 +90,8 @@ README.md             user guide (Thai)
 - SLIDE: 16:9 Mission Overview PNG (map rendered in cp style + table template).
 - PWA install, offline cache of viewed areas, auto update.
 - Login gate: one shared password before the app (`#lock`, `f2cpLogin`). SHA-256 hash in `config.js` `PASS_HASH` ("" = off);
-  new hash: Console `f2cpHash("pw")`. Asked on every app open (not remembered); hidden username "FalCon2CP" + password so Safari Keychain / browser password manager can save & fill (Face ID / fingerprint). No map tiles load before login (`f2cpLocked` in `setBase`). Not real security (public site).
+  new hash: Console `f2cpHash("pw")`. Asked on every app open (not remembered); hidden username "FalCon2CP" + password so Safari Keychain / browser password manager can save & fill (Face ID / fingerprint).
+  Correct password logs in without the button. First login registers a local passkey (`f2cpPk`, WebAuthn platform); later opens ask Face ID / fingerprint at once (`f2cpBio`), if blocked, tap the screen or press เข้าสู่ระบบ with empty password (no extra button). No map tiles load before login (`f2cpLocked` in `setBase`). Not real security (public site).
 
 ## 5. Maps
 - Online (only these two): `map250k.pmtiles` (JOG, 228 MB) and `map500k.pmtiles` (TPC, 65 MB) at
