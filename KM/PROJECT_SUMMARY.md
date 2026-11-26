@@ -89,6 +89,8 @@ README.md             user guide (Thai)
   Menu gestures are excluded; map dragging resumes and % is saved when the pinch ends.
 - SLIDE: 16:9 Mission Overview PNG (map rendered in cp style + table template).
 - PWA install, offline cache of viewed areas, auto update.
+- Login gate: one shared password before the app (`#lock`, `f2cpLogin`). SHA-256 hash in `config.js` `PASS_HASH` ("" = off);
+  new hash: Console `f2cpHash("pw")`. Remembered per device (localStorage `f2cpAuth`), `f2cpLogout()` clears. Not real security (public site).
 
 ## 5. Maps
 - Online (only these two): `map250k.pmtiles` (JOG, 228 MB) and `map500k.pmtiles` (TPC, 65 MB) at
