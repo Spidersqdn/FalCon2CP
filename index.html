@@ -199,13 +199,14 @@ html{background:#232529}
 @media print{#upd{display:none!important}}
 #lock{position:fixed;inset:0;z-index:99999;background:#232529;display:flex;align-items:center;justify-content:center;font:16px sans-serif;color:#eee}
 #lock form{background:#2d3036;padding:24px 22px;border-radius:12px;box-shadow:0 6px 24px #0009;width:min(300px,86vw);text-align:center}
-#lock input{width:100%;box-sizing:border-box;font-size:16px;padding:10px;margin:14px 0 10px;border-radius:8px;border:1px solid #555;background:#1b1d21;color:#fff}
+#lock input{width:100%;font-family:inherit;box-sizing:border-box;font-size:16px;padding:10px;margin:14px 0 10px;border-radius:8px;border:1px solid #555;background:#1b1d21;color:#fff}
 #lock button{width:100%;font:bold 16px sans-serif;padding:10px;border:0;border-radius:8px;background:#F2B43C;color:#111;cursor:pointer}
 #lock .err{color:#ff7b7b;font-size:14px;min-height:18px;margin-top:8px}
 @media print{#lock{display:none!important}}
 </style></head><body>
-<div id="lock"><form onsubmit="event.preventDefault();f2cpLogin()"><img src="icon.svg" alt="" style="width:48px;height:48px"><div style="font-weight:bold;font-size:18px;margin-top:6px">FalCon2CP</div>
- <input id="lockPw" type="password" placeholder="รหัสผ่าน" aria-label="รหัสผ่าน" autocomplete="current-password"><button type="submit">เข้าสู่ระบบ</button><div class="err" id="lockErr"></div></form></div>
+<div id="lock"><form id="lockF" method="post" action="#" autocomplete="on" onsubmit="event.preventDefault();f2cpLogin()"><img src="icon.svg" alt="" style="width:48px;height:48px"><div style="font-weight:bold;font-size:18px;margin-top:6px">FalCon2CP</div>
+ <input id="lockUser" name="username" type="text" value="FalCon2CP" autocomplete="username" tabindex="-1" aria-hidden="true" readonly style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;margin:0;padding:0;border:0"><!-- hidden: lets password managers save the password under one name -->
+ <input id="lockPw" name="password" type="password" placeholder="รหัสผ่าน" aria-label="รหัสผ่าน" autocomplete="current-password"><button type="submit">เข้าสู่ระบบ</button><div class="err" id="lockErr"></div></form></div>
 <script>
 // ---- Login gate (simple shared password; hash in config.js PASS_HASH; remembered on this device) ----
 function f2cpHash(m){ // SHA-256 hex, pure JS (works on file:// where crypto.subtle is missing)
@@ -221,12 +222,15 @@ function f2cpHash(m){ // SHA-256 hex, pure JS (works on file:// where crypto.sub
    h=g;g=f;f=e;e=d+t1|0;d=cc;cc=bb;bb=a;a=t1+t2|0}
   [a,bb,cc,d,e,f,g,h].forEach((v,i)=>H[i]=H[i]+v|0)}
  return H.map(v=>(v>>>0).toString(16).padStart(8,'0')).join('')}
-function f2cpLogin(){const h=f2cpHash(document.getElementById('lockPw').value);
- if(h===(window.CONFIG||{}).PASS_HASH){try{localStorage.setItem('f2cpAuth',h)}catch(e){}document.getElementById('lock').remove();window.f2cpLocked=false;if(typeof setBase=='function')setBase()}
- else{document.getElementById('lockErr').textContent='รหัสผ่านไม่ถูกต้อง';document.getElementById('lockPw').select()}}
-function f2cpLogout(){try{localStorage.removeItem('f2cpAuth')}catch(e){}location.reload()}
-(()=>{const ph=(window.CONFIG||{}).PASS_HASH;let a=null;try{a=localStorage.getItem('f2cpAuth')}catch(e){}
- if(!ph||a===ph)document.getElementById('lock').remove();else{window.f2cpLocked=true;setTimeout(()=>document.getElementById('lockPw').focus(),50)}})();
+function f2cpLogin(){const pw=document.getElementById('lockPw'),h=f2cpHash(pw.value); // login is asked on every app open (nothing remembered); browser password manager / Keychain (Face ID, fingerprint) fills it
+ if(h===(window.CONFIG||{}).PASS_HASH){
+  try{if(window.PasswordCredential)navigator.credentials.store(new PasswordCredential({id:document.getElementById('lockUser').value||'FalCon2CP',password:pw.value,name:'FalCon2CP'})).catch(()=>{})}catch(e){} // Chrome/Edge save prompt
+  setTimeout(()=>{document.getElementById('lock').remove()},0); // removing the submitted form lets Safari offer "Save Password"
+  window.f2cpLocked=false;if(typeof setBase=='function')setBase()}
+ else{document.getElementById('lockErr').textContent='รหัสผ่านไม่ถูกต้อง';pw.select()}}
+function f2cpLogout(){location.reload()}
+(()=>{const ph=(window.CONFIG||{}).PASS_HASH;try{localStorage.removeItem('f2cpAuth')}catch(e){} // old builds remembered the login
+ if(!ph)document.getElementById('lock').remove();else{window.f2cpLocked=true;setTimeout(()=>document.getElementById('lockPw').focus(),50)}})();
 </script>
 <div id="side">
  <div id="hdr"><b><img src="icon.svg" alt="" style="width:22px;height:22px;vertical-align:-4px;margin-right:6px">FalCon2CP</b><small>ROUTE PLANNER · PZ / CP / LZ</small>
