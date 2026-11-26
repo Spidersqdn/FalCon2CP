@@ -106,7 +106,7 @@ fieldset label{display:block;margin:4px 0}
 @media print{body.prtmode{display:block;height:auto;background:#fff}body.prtmode>*:not(#prt){display:none!important}body.prtmode #prt{position:static}}
 fieldset>*:not(legend){clear:both}
 .row{display:flex;gap:6px;align-items:center;margin:4px 0}.row>*{flex:1;min-width:0}
-.seg{display:flex;gap:4px;margin-bottom:8px}.seg button{flex:1;padding:5px 4px;font-size:12px}.seg button.on{background:var(--cy);border-color:var(--cy);color:#10161a;font-weight:bold}
+.seg{display:flex;gap:4px;margin-bottom:8px}.seg button{flex:1;padding:5px 4px;font-size:12px}.seg button.on,.b3 button.on{background:var(--cy);border-color:var(--cy);color:#10161a;font-weight:bold}
 .sm{font-size:11px;color:var(--mu);margin:6px 0 2px}
 .wl{list-style:none;margin:0;padding:0}.wl li{border-bottom:1px solid var(--ln);padding:7px 0}
 .wr{display:grid;grid-template-columns:minmax(0,1fr) 54px;gap:6px;align-items:center}.wi{cursor:pointer;min-width:0}
@@ -239,7 +239,7 @@ html{background:#232529}
    <label id="shRnmL"><input type="checkbox" id="shRnm" checked onchange="setSh('rnm',this.checked)" style="width:auto"> SHOW คำแสดง หลัก/สำรอง ในตาราง (มุมซ้ายบน)</label>
    <label id="shPillL"><input type="checkbox" id="shPill" checked onchange="setSh('pill',this.checked)" style="width:auto"> SHOW LEG</label>
   </div>
-  <div class="seg"><button id="mOn" onclick="setMode('map')">On MAP</button><button id="mLL" onclick="setMode('ll')">LAT/LONG</button></div>
+  <div class="seg"><button id="mOn" onclick="setMode('map');draw()">On MAP</button><button id="mLL" onclick="setMode('ll');draw()">LAT/LONG</button></div>
   <div id="llBox" style="display:none"><div class="sm">Lat / Lon แบบ องศา ลิปดา.ทศนิยม (ไม่ต้องใส่ N/E) เช่น 16 07.01 / 103 46.45</div>
    <div class="row"><input id="fLat" placeholder="16 07.01" inputmode="decimal"><input id="fLon" placeholder="103 46.45" inputmode="decimal"></div></div>
   <div class="sm">ชื่อจุด / Remark</div><input id="fName" style="width:100%" placeholder="เช่น สนาม ฮ. พล.ร.6">
@@ -274,7 +274,7 @@ html{background:#232529}
   <div class="sm" id="pInfo">-</div>
   <div class="sm">ลากเลขแผ่นสีแดง (✥) บนแผนที่เพื่อขยับส่วนที่จะพิมพ์</div>
   <div class="seg" style="margin:4px 0;display:grid;grid-template-columns:1fr 1fr 1fr"><button id="pmOne" onclick="pmSet(0)">เลื่อนแผ่นเดียว</button><button id="pmAll" onclick="pmSet(1)">เลื่อนทั้งหมด</button><button onclick="S.prOff={};prUpd()" title="คืนตำแหน่งแผ่นทั้งหมด">รีเซ็ต</button></div>
-  <div class="b3"><button class="pri" onclick="exportPDF()">Export PDF</button><button onclick="prShow=!prShow;prUpd();if(prShow&&pgGrp.getLayers().length)map.fitBounds(L.featureGroup(pgGrp.getLayers().filter(l=>l.getBounds)).getBounds())" title="แสดง/ซ่อนกรอบแผ่นบนแผนที่">แสดง/ซ่อนกรอบ</button><button onclick="printPages()">Print</button></div>
+  <div class="b3"><button class="pri" onclick="exportPDF()">Export PDF</button><button onclick="prShow=!prShow;prUpd();if(prShow&&pgGrp.getLayers().length)map.fitBounds(L.featureGroup(pgGrp.getLayers().filter(l=>l.getBounds)).getBounds())" title="แสดง/ซ่อนกรอบแผ่นบนแผนที่">แสดง/ซ่อนกรอบ</button><button id="pRot" onclick="S.ui.prRot=!S.ui.prRot;save();prUpd()" title="เอียงแผ่นตาม leg ที่ยาวที่สุด เพื่อใช้กระดาษน้อยลง">ตามแนวเส้นทางบิน</button></div>
   <div class="sm">Export PDF = ไฟล์ขนาดจริง ใช้ได้ทุกเครื่อง (iPad แนะนำ) · ตอนพิมพ์ PDF ตั้ง Scale 100% / Actual size (ห้าม Fit to page) · เส้นประแดง = แนวขอบแผ่นข้างเคียง ใช้ต่อแผ่น</div>
  </fieldset>
  
@@ -569,7 +569,7 @@ function render(g,ro,other){const L_=legs(),n=S.pts.length,anf=S.ui.style==='anf
       L.circleMarker([p._la,p._lo],{radius:3,color:'#000',weight:1.5,fillColor:'#fff',fillOpacity:1,interactive:false}).addTo(g)}
     const first=i===0,last=i===n-1,ms=p.msc||S.ui.msc||1,sz=(anf?RING*2:26)*ms;const skipMk=noEnds&&(first||last);
     if(anf){const k=wkey(p);if(seen.has(k)||(other&&g._cur&&g._cur.has(k)))return;seen.add(k)} // duplicate waypoint: ring + W.Pt shown once (current route wins)
-    const mk=skipMk?null:L.marker([p.lat,p.lon],{draggable:!ro,interactive:!ro,keyboard:!ro,zIndexOffset:500,icon:L.divIcon({className:'',html:`<div style="transform:scale(${ms});transform-origin:0 0">${anf?`<div class="ring" style="width:${RING*2}px;height:${RING*2}px"></div>`:shape(p.type)}</div>`,iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]})}).addTo(g);
+    const mk=skipMk?null:L.marker([p.lat,p.lon],{draggable:!ro&&S.ui.mode==='map',interactive:!ro,keyboard:!ro,zIndexOffset:500,icon:L.divIcon({className:'',html:`<div style="transform:scale(${ms});transform-origin:0 0">${anf?`<div class="ring" style="width:${RING*2}px;height:${RING*2}px"></div>`:shape(p.type)}</div>`,iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]})}).addTo(g);
     if(!ro&&mk){mk.bindTooltip(esc(p.type+' '+p.name),{direction:'top',offset:[0,-12]});
     mk.on('dragend',e=>{const q=e.target.getLatLng();p.lat=+q.lat.toFixed(6);p.lon=+q.lng.toFixed(6);draw()})}
     if(!shw('lbl'))return;
@@ -1133,13 +1133,18 @@ let pmSrc=null,prShow=false,prMaps=[];const pgGrp=L.layerGroup().addTo(map);
 function prCfg(){const [w,h]=PAPER[$('pP').value],l=$('pO').value==='l',m=Math.max(0,+$('pM').value||0);
   const base=+$('pS').value,f=Math.min(1000,Math.max(10,+$('pF').value||100));
   return {S:Math.round(base*100/f),base,f,ov:Math.max(0,+$('pOv').value||0)*10,pw:(l?h:w)-2*m,ft:$('pLb').checked?8:0,ph:(l?w:h)-2*m-0.5-($('pLb').checked?8:0),m,paper:$('pP').value,land:l}} // mm; -0.5 avoids a spill page
+// ตามแนวเส้นทางบิน: bearing (deg, -90..90) that points to the top of each sheet = the long side of the paper along the longest leg
+function prRot(){if(!S.ui.prRot)return 0;let best=null,bl=-1;const A=S.pts;
+  for(let i=1;i<A.length;i++){const a=MERC.project(L.latLng(A[i-1].lat,A[i-1].lon)),b=MERC.project(L.latLng(A[i].lat,A[i].lon)),l=Math.hypot(b.x-a.x,b.y-a.y);
+    if(l>bl){bl=l;best=Math.atan2(b.x-a.x,b.y-a.y)*180/Math.PI}}
+  if(best===null||!bl)return 0;let u=best-($('pO').value==='l'?90:0);u=((u%180)+180)%180;if(u>90)u-=180;return Math.round(u*10)/10}
 // zoom where 1 CSS px (1/96 in on paper) = S*0.0254/96 m on the ground at latitude lat
 const zoomFor=(lat,S)=>Math.log2(M0*Math.cos(lat*Math.PI/180)*96/(S*0.0254));
-function prPages(){const c=prCfg(),ll=[];
+function prPages(){const c=prCfg(),ll=[];c.rot=prRot();const ur=c.rot*Math.PI/180,cs=Math.cos(ur),sn=Math.sin(ur),U=(x,y)=>L.point(x*cs+y*sn,-x*sn+y*cs); // mercator y points north
   const add=a=>a.forEach((p,i)=>{ll.push([p.lat,p.lon]);if(shw('lbl')&&p.lbl)ll.push(p.lbl);if(shw('box')&&p.box&&i<a.length-1)ll.push(p.box)});
   const ca=(S.ui.route||'main')==='alt';if(showR(ca))add(S.pts);if(S.alt&&S.alt.length>1&&showR(!ca))add(S.alt);
   if(!ll.length)return {c,pages:[],nr:0,nc:0};
-  const P=ll.map(x=>MERC.project(L.latLng(x))),xs=P.map(p=>p.x),ys=P.map(p=>p.y);
+  const P=ll.map(x=>{const q=MERC.project(L.latLng(x));return {x:q.x*cs-q.y*sn,y:q.x*sn+q.y*cs}}),xs=P.map(p=>p.x),ys=P.map(p=>p.y);
   // paper mm -> mercator m, using the lowest |lat| so every page is at least this big (overlap never < setting)
   const k=c.S/1000/Math.cos(Math.min(...ll.map(x=>Math.abs(x[0])))*Math.PI/180),pad=25*k;
   // 0.6 mm spare: Leaflet rounds each map to whole pixels
@@ -1148,20 +1153,20 @@ function prPages(){const c=prCfg(),ll=[];
   const nc=Math.max(1,Math.ceil((x1-x0-W)/sx)+1),nr=Math.max(1,Math.ceil((y1-y0-H)/sy)+1);
   const ox=(x0+x1)/2-(W+(nc-1)*sx)/2,oy=(y0+y1)/2+(H+(nr-1)*sy)/2,pages=[];
   const off=S.prOff||{};
-  for(let r=0;r<nr;r++)for(let q=0;q<nc;q++){const o=off[r+'_'+q]||[0,0],gx=ox+W/2+q*sx,gy=oy-H/2-r*sy,cx=gx+o[0],cy=gy+o[1];
-    pages.push({r,c:q,g:[gx,gy],W,H,center:MERC.unproject(L.point(cx,cy)),b:[MERC.unproject(L.point(cx-W/2,cy-H/2)),MERC.unproject(L.point(cx+W/2,cy+H/2))]})}
+  for(let r=0;r<nr;r++)for(let q=0;q<nc;q++){const o=off[r+'_'+q]||[0,0],gx=ox+W/2+q*sx,gy=oy-H/2-r*sy,m=U(gx,gy);
+    const pm=[[-1,-1],[1,-1],[1,1],[-1,1]].map(([a,b])=>{const t=U(gx+a*W/2,gy+b*H/2);return L.point(t.x+o[0],t.y+o[1])}); // sheet corners (mercator m)
+    pages.push({r,c:q,W,H,pm,center:MERC.unproject(L.point(m.x+o[0],m.y+o[1])),poly:pm.map(t=>MERC.unproject(t))})}
   return {c,pages,nr,nc}}
 function prUpd(){if(!$('pS'))return;const {c,pages,nr,nc}=prPages();
-  $('pInfo').textContent=pages.length?`${pages.length} แผ่น (${nr} แถว × ${nc} คอลัมน์) · ${c.paper} ${c.land?'แนวนอน':'แนวตั้ง'} · 1:${c.S.toLocaleString()}${c.f!==100?` (1:${c.base.toLocaleString()} × ${c.f}%)`:''} · 1 แผ่น ≈ ${(c.pw*c.S/1e6).toFixed(1)}×${(c.ph*c.S/1e6).toFixed(1)} กม.`:'ยังไม่มีเส้นทาง';
+  $('pInfo').textContent=pages.length?`${pages.length} แผ่น (${nr} แถว × ${nc} คอลัมน์) · ${c.paper} ${c.land?'แนวนอน':'แนวตั้ง'} · 1:${c.S.toLocaleString()}${c.f!==100?` (1:${c.base.toLocaleString()} × ${c.f}%)`:''} · 1 แผ่น ≈ ${(c.pw*c.S/1e6).toFixed(1)}×${(c.ph*c.S/1e6).toFixed(1)} กม.${c.rot?` · เอียง ${c.rot}°`:''}`:'ยังไม่มีเส้นทาง';$('pRot').classList.toggle('on',!!S.ui.prRot);
   $('pFi').textContent=c.f!==100?'= 1:'+c.S.toLocaleString():'';
   S.pr={S:$('pS').value,F:$('pF').value,P:$('pP').value,O:$('pO').value,ov:$('pOv').value,m:$('pM').value,lb:$('pLb').checked};save();
   pgGrp.clearLayers();if(!prShow)return;
-  const rcs=[];pages.forEach((p,i)=>{const rc=L.rectangle(p.b,{color:'#d00',weight:2,fill:true,fillOpacity:.04,dashArray:'6 4',interactive:false}).addTo(pgGrp);rcs.push(rc);
+  const rcs=[];pages.forEach((p,i)=>{const rc=L.polygon(p.poly,{color:'#d00',weight:2,fill:true,fillOpacity:.04,dashArray:'6 4',interactive:false}).addTo(pgGrp);rcs.push(rc);
     // drag the page number to move what this sheet prints
-    const bnd=ll=>{const q=MERC.project(ll);return [MERC.unproject(L.point(q.x-p.W/2,q.y-p.H/2)),MERC.unproject(L.point(q.x+p.W/2,q.y+p.H/2))]};
     L.marker(p.center,{draggable:!editLocked(),interactive:!editLocked(),keyboard:!editLocked(),zIndexOffset:900,icon:L.divIcon({className:'',iconSize:null,html:`<span class="pgn" style="cursor:${editLocked()?'default':'move'}" title="ลากเพื่อขยับแผ่นนี้">✥ ${i+1}</span>`})}).addTo(pgGrp)
      .on('drag',e=>{const q=MERC.project(e.target.getLatLng()),o=MERC.project(p.center),dx=q.x-o.x,dy=q.y-o.y;
-       (S.ui.prAll?pages:[p]).forEach(t=>{const c0=MERC.project(t.center);rcs[pages.indexOf(t)].setBounds(bnd(MERC.unproject(L.point(c0.x+dx,c0.y+dy))))})})
+       (S.ui.prAll?pages:[p]).forEach(t=>rcs[pages.indexOf(t)].setLatLngs(t.pm.map(q=>MERC.unproject(L.point(q.x+dx,q.y+dy)))))})
      .on('dragend',e=>{const q=MERC.project(e.target.getLatLng()),o=MERC.project(p.center),dx=q.x-o.x,dy=q.y-o.y,off=S.prOff=S.prOff||{};
        (S.ui.prAll?pages:[p]).forEach(t=>{const k=t.r+'_'+t.c,v=off[k]||[0,0];off[k]=[v[0]+dx,v[1]+dy]});prUpd()})})}
 function pmSet(a){S.ui.prAll=!!a;$('pmOne').classList.toggle('on',!a);$('pmAll').classList.toggle('on',!!a);save()}
@@ -1225,7 +1230,9 @@ async function buildPages(){const {c,pages,nr,nc}=prPages();if(!pages.length){al
   $('pInfo').textContent='กำลังโหลดแผนที่...';
   await Promise.all(pages.map((p,i)=>{const pg=document.createElement('div');pg.className='pg';pg.style.width=c.pw+'mm';box.appendChild(pg);
     const d=pg.appendChild(document.createElement('div'));d.className='pm';d.style.width=c.pw+'mm';d.style.height=c.ph+'mm';
-    const m=L.map(d,{preferCanvas:true,zoomControl:false,attributionControl:false,zoomSnap:0,fadeAnimation:false,zoomAnimation:false,markerZoomAnimation:false,
+    let md=d;if(c.rot){const D=Math.hypot(c.pw,c.ph)+2;md=d.appendChild(document.createElement('div')); // map turned so the route runs along the sheet
+      Object.assign(md.style,{position:'absolute',width:D+'mm',height:D+'mm',left:(c.pw-D)/2+'mm',top:(c.ph-D)/2+'mm',transform:`rotate(${-c.rot}deg)`})}
+    const m=L.map(md,{preferCanvas:true,zoomControl:false,attributionControl:false,zoomSnap:0,fadeAnimation:false,zoomAnimation:false,markerZoomAnimation:false,
       dragging:false,scrollWheelZoom:false,doubleClickZoom:false,boxZoom:false,keyboard:false,touchZoom:false});
     prMaps.push(m);m.setView(p.center,zoomFor(p.center.lat,c.S),{animate:false});
     const lay=new HiRes({tileSize:128,src,maxNativeZoom:src.max-1,minNativeZoom:Math.max(0,src.min-1),keepBuffer:0,updateWhenIdle:false});
@@ -1262,7 +1269,7 @@ function pvPDF(){if(!PV)return;const {c,imgs}=PV;
   imgs.forEach((u,i)=>{if(i)pdf.addPage();pdf.addImage(u,'JPEG',c.m,c.m,c.pw,c.ph+c.ft,undefined,'FAST')});
   pdf.save(`map_1-${Math.round(c.S/1000)}k_${c.paper}_${imgs.length}p.pdf`);$('pInfo').textContent=`บันทึก PDF ${imgs.length} แผ่นแล้ว`}
 function pvPrint(){if(!PV)return;$('pInfo').textContent=`พิมพ์ ${PV.imgs.length} แผ่น`;document.body.classList.add('prtmode');setTimeout(()=>window.print(),300)}
-const printPages=()=>previewPages('print'),exportPDF=()=>previewPages('pdf');
+const exportPDF=()=>previewPages('pdf');
 addEventListener('afterprint',()=>{document.body.classList.remove('prtmode');prUpd()});
 // ---- init ----
 // ?map=<url>: a link can point the app at any map server and the choice is then saved, so a map from a site the app
