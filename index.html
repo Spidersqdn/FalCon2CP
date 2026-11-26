@@ -243,7 +243,7 @@ function f2cpLogin(){const pw=document.getElementById('lockPw');if(!document.get
 let f2cpBusy=false;
 function f2cpBio(){const k=f2cpPk(),e=document.getElementById('lockErr');if(!k||f2cpBusy)return;f2cpBusy=true;e.textContent='';
  navigator.credentials.get({publicKey:{challenge:f2cpRnd(32),allowCredentials:[{type:'public-key',id:f2cpUnB64(k.id),transports:['internal','hybrid']}],userVerification:'required',timeout:60000}})
-  .then(c=>{if(c)f2cpUnlock()}).catch(()=>{e.textContent='กด เข้าสู่ระบบ เพื่อสแกน Face ID / ลายนิ้วมือ'}).finally(()=>{f2cpBusy=false})} // blocked without a tap (some browsers) or cancelled: tap anywhere to retry
+  .then(c=>{if(c)f2cpUnlock()}).catch(()=>{e.textContent='กด เข้าสู่ระบบ เพื่อสแกนหน้า/นิ้ว'}).finally(()=>{f2cpBusy=false})} // blocked without a tap (some browsers) or cancelled: tap anywhere to retry
 function f2cpLogout(){location.reload()}
 (()=>{const ph=f2cpPH();try{localStorage.removeItem('f2cpAuth')}catch(e){} // old builds remembered the login
  if(!ph)return document.getElementById('lock').remove();window.f2cpLocked=true;
