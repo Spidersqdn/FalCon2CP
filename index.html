@@ -205,7 +205,7 @@ html{background:#232529}
 @media print{#lock{display:none!important}}
 </style></head><body>
 <div id="lock"><form id="lockF" method="post" action="#" autocomplete="on" onsubmit="event.preventDefault();f2cpLogin()"><img src="icon.svg" alt="" style="width:48px;height:48px"><div style="font-weight:bold;font-size:18px;margin-top:6px">FalCon2CP</div>
- <input id="lockUser" name="username" type="text" value="FalCon2CP" placeholder="ชื่อผู้ใช้" aria-label="ชื่อผู้ใช้" autocomplete="username" autocapitalize="off" spellcheck="false" style="margin-bottom:0">
+ <input id="lockUser" name="username" type="text" value="FalCon2CP" autocomplete="username" tabindex="-1" aria-hidden="true" readonly style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;margin:0;padding:0;border:0"><!-- hidden: lets password managers save the password under one name -->
  <input id="lockPw" name="password" type="password" placeholder="รหัสผ่าน" aria-label="รหัสผ่าน" autocomplete="current-password"><button type="submit">เข้าสู่ระบบ</button><div class="err" id="lockErr"></div></form></div>
 <script>
 // ---- Login gate (simple shared password; hash in config.js PASS_HASH; remembered on this device) ----
