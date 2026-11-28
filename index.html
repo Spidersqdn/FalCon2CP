@@ -662,7 +662,7 @@ function editLeg(i,ll){const a=S.pts[i];
    <label>ขนาดกล่องนี้</label>${pctIn('gS',(a.psc||a.bsc||S.ui.bsc||1)*100,`S.pts[${i}].psc=this.value/100;draw()`)}
    <label>แสดง HDG</label><div class="seg" style="margin:0">${[['l','ซ้าย'],['r','ขวา'],['b','ทั้งสองฝั่ง']].map(([k,t])=>`<button id="gH${k}" class="${(a.ph||S.ui.ph||'b')===k?'on':''}" onclick="setPh(${i},'${k}')">${t}</button>`).join('')}</div>
    <label style="color:#333"><input type="checkbox" id="gAll" style="width:auto"> ใช้ขนาดและ HDG นี้กับทุกกล่อง LEG</label>
-   <button class="pri" onclick="if($('gAll').checked){const v=$('gS').value/100,h=S.pts[${i}].ph||S.ui.ph||'b';S.pts.forEach(p=>{p.psc=v;delete p.ph});S.ui.ph=h}closeEd();draw()">บันทึก</button><button onclick="['psc','poff','ph'].forEach(k=>delete S.pts[${i}][k]);closeEd();draw()">คืนค่าเดิม</button>`)}
+    <button class="pri" onclick="if($('gAll').checked){const v=$('gS').value/100,h=S.pts[${i}].ph||S.ui.ph||'b';allPts().forEach(p=>{p.psc=v;delete p.ph});S.ui.ph=h}closeEd();draw()">บันทึก</button><button onclick="['psc','poff','ph'].forEach(k=>delete S.pts[${i}][k]);closeEd();draw()">คืนค่าเดิม</button>`)}
 function setPh(i,k){S.pts[i].ph=k;['l','r','b'].forEach(x=>$('gH'+x).classList.toggle('on',x===k));draw()}
 function popForm(ll,html){if(editLocked())return;if(isSheet()&&edPrev===null){const b=document.body.classList;edPrev=b.contains('full')?'full':b.contains('hide')?'hide':'';b.remove('full','hide');b.add('editing');togTxt();setTimeout(()=>map.invalidateSize(),50)}const e=$('edp');e.innerHTML=`<div class="pop"><div class="edh">${isSheet()?'':'<span class="grip" title="ลากเพื่อย้ายกล่อง">⠿ ลากย้าย</span>'}<button title="ย้ายไปอีกด้าน" onclick="edPos=null;edPlace();$('edp').classList.toggle('lft')">⇆</button><button title="ปิด" onclick="closeEd()">✕</button></div>${html}</div>`;e.style.width=isSheet()&&!isPh()?$('side').offsetWidth+'px':'';e.style.display='block';edPlace()}
 // desktop: drag the editor by its header; position is kept for later opens
@@ -692,7 +692,7 @@ function editBox(i,ll){const a=S.pts[i],o=a.ov||{},l=legs()[i];
    <label>ขนาดกล่อง</label>${pctIn('bS',(a.bsc||S.ui.bsc||1)*100,`S.pts[${i}].bsc=this.value/100;draw()`)}
    <label style="color:#333"><input type="checkbox" id="bAll" style="width:auto"> ใช้รูปแบบ/ขนาดกล่อง/ความหนาเส้นนี้กับทุก leg</label>
    <button class="pri" onclick="saveBox(${i})">บันทึก</button><button onclick="S.pts[${i}].ov={};delete S.pts[${i}].lw;closeEd();draw()">คืนค่าอัตโนมัติ</button>`)}
-function saveBox(i){const a=S.pts[i],bx={h:$('bH').checked,t:$('bT').checked};if($('bAll').checked){const sc=$('bS').value/100;S.ui.bsc=sc;S.ui.lw=+$('eWn').value||undefined;S.pts.forEach(p=>{delete p.lw;p.bx={...bx};delete p.bsc;p.ov=Object.assign(p.ov||{},{col:$('eK').value})})}a.bx=bx;a.ov={crs:$('eC').value.trim(),nm:$('eN').value.trim(),t:$('eT').value.trim(),alt:$('eA').value.trim(),col:$('eK').value};closeEd();draw()}
+function saveBox(i){const a=S.pts[i],bx={h:$('bH').checked,t:$('bT').checked};a.bx=bx;a.ov={crs:$('eC').value.trim(),nm:$('eN').value.trim(),t:$('eT').value.trim(),alt:$('eA').value.trim(),col:$('eK').value};if($('bAll').checked){const sc=$('bS').value/100,w=+$('eWn').value||undefined;S.ui.bsc=sc;S.ui.lw=w;if(w)S.ui.lwc=w/(S.ui.style==='anf'?4:3);allPts().forEach(p=>{delete p.lw;p.bx={...bx};delete p.bsc;p.ov=Object.assign(p.ov||{},{col:$('eK').value})});globSizes()}closeEd();draw()}
 function editLbl(i){const p=S.pts[i];
   popForm(p.lbl,`<b>ป้ายจุด ${i+1}</b>
    <label>ข้อความป้าย (ว่าง = Type + ชื่อ)</label><input id="eL" value="${esc(lblTxt(p))}" placeholder="${esc(p.type+' '+p.name)}">
@@ -758,7 +758,7 @@ function setCpn(i,v){const p=S.pts[i],n=parseInt(v,10),oi=inOther(p),q=oi>=0?S.a
 function autoCpn(){[S.pts,S.alt].forEach(a=>(a||[]).forEach(p=>delete p.cpn));closeEd();draw()}
 function setFly(i,by){const p=S.pts[i];if(by)p.fly='by';else delete p.fly;$('fO').classList.toggle('on',!by);$('fB').classList.toggle('on',!!by);draw()}
 function saveLbl(i){const p=S.pts[i];p.ltxt=$('eL').value.trim();if(p.ltxt===(p.type+' '+p.name).trim())p.ltxt='';p.lcol=$('eK').value;if(p.lcol.toLowerCase()===col(p.type).toLowerCase())delete p.lcol;p.noTbl=$('eH').checked;p.tv=[...Array(12)].map((_,k)=>$('tv'+k)?.value.trim()||'');
-  if($('lAll').checked){S.ui.lsc=p.lsc;S.ui.msc=p.msc;S.pts.forEach(q=>{delete q.lsc;delete q.msc;q.tbx=p.tbx})}closeEd();draw()}
+  if($('lAll').checked){S.ui.lsc=p.lsc||S.ui.lsc||1;S.ui.msc=p.msc||S.ui.msc||1;S.ui.tbx=p.tbx??S.ui.tbx??0;allPts().forEach(q=>{delete q.lsc;delete q.msc;delete q.tbx});globSizes()}closeEd();draw()}
 // ---- waypoint list (AirNavFlow style) ----
 function list(L_,tot,tmin){
   $('wpl').innerHTML=S.pts.map((p,i)=>{const l=L_[i-1];return `<li><div class="wr"><div class="wi" onclick="edOpen(${i},1)" title="แตะเพื่อแก้ไข">
