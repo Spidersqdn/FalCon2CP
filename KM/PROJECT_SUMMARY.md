@@ -84,7 +84,7 @@ README.md             user guide (Thai)
 - Paper view starts enabled by default (`pvToggle`), supports 10–400% (touch zoom-out floor via `pvMin` to avoid iPhone OOM) and two-finger pinch (`pvPinch*`/`pvEndPinch`).
 - Export Map: true scale (1:50k–1:1M), A4/A3, draggable sheets, **ตามแนวเส้นทางบิน** (route-aligned tilted sheets following the shown route), preview dialog with clickable **North arrow** per sheet (`naClick`/`naImgs`), **บันทึก PDF** and **พิมพ์** (sidebar Print button removed).
 - **DOC PLAN**: 2-page A4 draft flight plan (Word `.docx` / PDF / PNG; iOS Share Sheet files-only). Chooses primary or alternate route; p.1 map uses paper-view scale & current style; p.2 has CP/HDG/DIST/TIME/ALT table, DDM/MGRS coordinates and auto NOTE (PZ/LZ freqs from `AD.txt`, `RADAR OSCAR CONTROL`, or `DIAMOND UHF 236.000`).
-- **SLIDE**: 16:9 Mission Overview PNG (map rendered in `cp` style + table template following primary route).
+- **SLIDE**: 16:9 Mission Overview PNG (map rendered in `cp` style matching shown primary/alternate routes + table template following the shown route, or primary route if both are shown).
 - PWA install, offline cache of viewed areas (`sw.js` `app-v16` persists offline toggle), auto update, iOS full-screen `--app-h`.
 - Map login: app opens freely on OSM; JOG 1:250k / TPC 1:500k (`CONFIG.MAPS`) appear only after "🔑 LOGIN" (MAP section, before IMPORT MAP).
   Modal `#lock` (`f2cpOpen`), one shared password, SHA-256 in `config.js` `PASS_HASH` ("" = off; new hash: Console `f2cpHash("pw")`).
