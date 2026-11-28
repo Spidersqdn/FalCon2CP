@@ -978,7 +978,7 @@ function dl(name,txt,type){const a=document.createElement('a');a.href=URL.create
 function exportCSV(){dl('route.csv','type,name,lat,lon,alt_ft\n'+S.pts.map(p=>[p.type,p.name,p.lat,p.lon,p.alt].join(',')).join('\n'),'text/csv')}
 function exportKML(){/* returns KML text for both routes */const main=(S.ui.route||'main')==='main',one=(nm,ends)=>{const L_=legs();
   const pm=S.pts.filter((p,i)=>ends||(i&&i<S.pts.length-1)).map(p=>`<Placemark><name>${esc(p.type+' '+p.name)}</name><Point><coordinates>${p.lon},${p.lat},0</coordinates></Point></Placemark>`).join('');
-  const ln=L_.map((l,i)=>`<Placemark><name>Leg ${i+1} ${l.crsTxt} ${Math.round(l.nm)}NM ${hm(l.min)} ${l.alt||''}</name><Style><LineStyle><color>ff000000</color><width>3</width></LineStyle></Style><LineString><tessellate>1</tessellate><coordinates>${S.pts[i].lon},${S.pts[i].lat},0 ${S.pts[i+1].lon},${S.pts[i+1].lat},0</coordinates></LineString></Placemark>`).join('');
+  const ln=L_.map((l,i)=>`<Placemark><name>Leg ${i+1} ${l.crsTxt} ${Math.round(l.nm)}NM ${hm(l.min)} ${l.alt||''}</name><Style><LineStyle><color>ff000000</color><width>3</width></LineStyle></Style><LineString><tessellate>1</tessellate><coordinates>${LO(S.pts[i])},${LA(S.pts[i])},0 ${LO(S.pts[i+1])},${LA(S.pts[i+1])},0</coordinates></LineString></Placemark>`).join('');
   return `<Folder><name>${nm}</name>${pm}${ln}</Folder>`};
   const a=one(main?'Primary':'Alternate',true),b=withAlt(()=>one(main?'Alternate':'Primary',false))||'',f=main?a+b:b+a;
   return `<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>Route</name>${f}</Document></kml>`}
