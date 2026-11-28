@@ -952,13 +952,16 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden)verCheck(t
 addEventListener('online',()=>verCheck(false));setInterval(()=>{if(!document.hidden)verCheck(false)},30*60000);verCheck(false);
 // ---- import ----
 function guessType(name,i,n){const m=/^(PZ|LZ|CP\d*|SP|RP)\b/i.exec(name||'');if(m)return m[1].toUpperCase();return i===0?'PZ':i===n-1?'LZ':'CP'+i}
-function setPts(arr){arr=arr.filter(p=>has(p.lat)&&has(p.lon)&&isFinite(+p.lat)&&isFinite(+p.lon)&&Math.abs(+p.lat)<=90&&Math.abs(+p.lon)<=180); // skip blank/bad rows (NaN breaks the map)
-  if(!arr.length)return alert('ไม่พบจุดที่มีพิกัดถูกต้องในไฟล์');const n=arr.length;S.pts=arr.map((p,i)=>{const t=(p.type||guessType(p.name,i,n)).toUpperCase(),k=kind(t);
-  let nm=p.name||'';if(nm.toUpperCase().startsWith(t))nm=nm.slice(t.length).trim();return {type:k==='PZ'||k==='LZ'?k:'CP',ord:i,name:nm,lat:+p.lat,lon:+p.lon,alt:p.alt||''}});
-  S.alt=null;S.ui.route='main';HIST.length=FUT.length=0;lastSnap=null;routeBtns();
-  draw();if(n)map.fitBounds(S.pts.map(p=>[p.lat,p.lon]),{padding:[80,80]});}
-function parseCSV(t){const rows=t.replace(/^\uFEFF/,'').trim().split(/\r?\n/).filter(r=>r.trim()).map(r=>r.split(',').map(x=>x.trim()));const h=rows.shift().map(s=>s.trim().toLowerCase());
-  const g=(r,k)=>r[h.findIndex(x=>x.startsWith(k))];return rows.map(r=>({type:g(r,'type'),name:g(r,'name'),lat:g(r,'lat'),lon:g(r,'lon'),alt:g(r,'alt')}));}
+function setPts(arr){const ok=p=>has(p.lat)&&has(p.lon)&&isFinite(+p.lat)&&isFinite(+p.lon)&&Math.abs(+p.lat)<=90&&Math.abs(+p.lon)<=180; // skip blank/bad rows (NaN breaks the map)
+  arr=arr.filter(ok);if(!arr.length)return alert('ไม่พบจุดที่มีพิกัดถูกต้องในไฟล์');
+  const isAlt=p=>/^(alt|สำรอง)/i.test(String(p.route||'').trim()),mk=list=>{const n=list.length;return list.map((p,i)=>{const t=(p.type||guessType(p.name,i,n)).toUpperCase(),k=kind(t);
+    let nm=p.name||'';if(nm.toUpperCase().startsWith(t))nm=nm.slice(t.length).trim();return {type:k==='PZ'||k==='LZ'?k:'CP',ord:i,name:nm,lat:+p.lat,lon:+p.lon,alt:p.alt||''}})};
+  const main=arr.filter(p=>!isAlt(p)),alt=arr.filter(isAlt);S.pts=mk(main.length?main:arr);S.alt=main.length&&alt.length>=2?mk(alt):null;
+  S.ui.route='main';HIST.length=FUT.length=0;lastSnap=null;routeBtns();
+  draw();map.fitBounds(allPts().map(p=>[p.lat,p.lon]),{padding:[80,80]});}
+function parseCSV(t){const sp=l=>{const o=[];let s='',q=0;for(let i=0;i<l.length;i++){const c=l[i];if(q){if(c==='"'&&l[i+1]==='"'){s+='"';i++}else if(c==='"')q=0;else s+=c}else if(c==='"'&&!s)q=1;else if(c===','){o.push(s.trim());s=''}else s+=c}o.push(s.trim());return o};
+  const rows=t.replace(/^\uFEFF/,'').trim().split(/\r?\n/).filter(r=>r.trim()).map(sp);const h=rows.shift().map(s=>s.toLowerCase());
+  const g=(r,k)=>r[h.findIndex(x=>x.startsWith(k))];return rows.map(r=>({route:g(r,'route'),type:g(r,'type'),name:g(r,'name'),lat:g(r,'lat'),lon:g(r,'lon'),alt:g(r,'alt')}));}
 function parseXML(t){const d=new DOMParser().parseFromString(t,'text/xml'),out=[];
   const tx=(e,s)=>e.getElementsByTagName(s)[0]?.textContent.trim();
   for(const w of d.querySelectorAll('wpt,rtept'))out.push({name:tx(w,'name'),lat:w.getAttribute('lat'),lon:w.getAttribute('lon')});
