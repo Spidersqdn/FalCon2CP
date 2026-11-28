@@ -1033,9 +1033,9 @@ function slTxt(c,t,x,y,sz,o={}){c.font=`${o.b?'bold ':''}${Math.round(sz*slK)}px
 // fitW: number = zoom so the route spans about fitW px; 'paper' (DATA) = paper-view print scale and the current map style
 async function slMap(c,X,Y,W,H,fitW){if(!window.html2canvas)await loadJS('lib/html2canvas.min.js');
   const box=document.createElement('div');box.id='slMapBox';// size the off-screen map so the route fits at the SAME zoom as the screen -> symbols/tables keep the on-screen proportion
-  const P=allPts().length?allPts():S.pts,LB=L.latLngBounds(P.map(p=>[p.lat,p.lon]));let z=map.getZoom();
+  const paper=fitW==='paper',rt=paper&&$('df_rt')?$('df_rt').value:null,P=rt?dfPick().P:(allPts().length?allPts():S.pts),LB=L.latLngBounds(P.map(p=>[p.lat,p.lon]));let z=map.getZoom();
   let pa=map.project(LB.getNorthWest(),z),pb=map.project(LB.getSouthEast(),z);
-  const paper=fitW==='paper';if(paper){z=zoomFor(LB.getCenter().lat,prCfg().S);pa=map.project(LB.getNorthWest(),z);pb=map.project(LB.getSouthEast(),z)} // DATA: same print scale as paper view
+  if(paper){z=zoomFor(LB.getCenter().lat,prCfg().S);pa=map.project(LB.getNorthWest(),z);pb=map.project(LB.getSouthEast(),z)} // DATA: same print scale as paper view
   else if(fitW){z+=Math.log2(Math.min((fitW-420)/Math.max(1,pb.x-pa.x),(fitW*H/W-320)/Math.max(1,pb.y-pa.y)));z=Math.min(z,(map.getMaxZoom()||18));pa=map.project(LB.getNorthWest(),z);pb=map.project(LB.getSouthEast(),z)}
   const mw=paper?W*0.55:W,mh=paper?H*0.55:H;let bw=Math.max(pb.x-pa.x+300,mw),bh=Math.max(pb.y-pa.y+250,mh);if(bw/bh<W/H)bw=bh*W/H;else bh=bw*H/W;
   const MAXW=paper?4500:3000;if(bw>MAXW){z+=Math.log2(MAXW/bw);bh*=MAXW/bw;bw=MAXW}
@@ -1046,7 +1046,7 @@ async function slMap(c,X,Y,W,H,fitW){if(!window.html2canvas)await loadJS('lib/ht
     const src=tileSrc(),lay=new HiRes({tileSize:128,src,maxNativeZoom:src.max-1,minNativeZoom:Math.max(0,src.min-1),keepBuffer:0,updateWhenIdle:false});
     const ok=new Promise(res=>{const t=setTimeout(res,30000);lay.once('load',()=>{clearTimeout(t);res()})});lay.addTo(m);
     if(S.ui.airports){await apLoad();apDraw(L.layerGroup().addTo(m),false)}
-    const st=S.ui.style;if(!paper)S.ui.style='cp';try{drawRoutes(L.layerGroup().addTo(m),true)}finally{S.ui.style=st}
+    const st=S.ui.style,sh=shSet(),om=sh.main,oa=sh.alt;if(!paper)S.ui.style='cp';if(rt){sh.main=rt==='main';sh.alt=rt==='alt'}try{drawRoutes(L.layerGroup().addTo(m),true)}finally{S.ui.style=st;sh.main=om;sh.alt=oa}
     await ok;await new Promise(r=>setTimeout(r,300));
     // grow the frame so every PZ/CP/LZ table, label and DOG LEG box is fully inside (they keep their pixel size, so a big route can push them past the edge)
     {const br=box.getBoundingClientRect(),U=[0,0,bw,bh],pd=24;box.querySelectorAll('.leaflet-marker-pane *').forEach(e=>{const r=e.getBoundingClientRect();if(!r.width||!r.height)return;
@@ -1084,9 +1084,9 @@ async function slShare(){try{const f=new File([await slBlob()],slName(),{type:'i
   if(navigator.canShare&&navigator.canShare({files:[f]}))await navigator.share({files:[f]});else{dlBlob(f.name,f);alert('อุปกรณ์นี้แชร์ไฟล์ไม่ได้ จึงบันทึกเป็นไฟล์แทน')}}
   catch(e){if(e.name!=='AbortError')alert('แชร์ไม่ได้: '+e.message)}}
 // ---- DRAFT PLAN: 2-page Word (.docx) "เส้นทางบิน ขบวน ฮ." (p.1 header + map, p.2 header + CP table + coordinates + NOTE) ----
-const DF_F=['ttl','falt','note'];
+const DF_F=['ttl','falt','note'],dfSig=()=>{const P=dfPick().P,f=P[0],z=P[P.length-1];return f&&z?`${f.lat},${f.lon};${z.lat},${z.lon}`:''};
 function dfLoad(){let o={};try{o=JSON.parse(localStorage.getItem('draftF'))||{}}catch(e){}return o}
-function dfSave(){const o={};DF_F.forEach(k=>o[k]=$('df_'+k).value);try{localStorage.setItem('draftF',JSON.stringify(o))}catch(e){}}
+function dfSave(){const o={sig:dfSig()};DF_F.forEach(k=>o[k]=$('df_'+k).value);try{localStorage.setItem('draftF',JSON.stringify(o))}catch(e){}}
 function openDraft(){if(S.pts.length<2)return alert('ต้องมี waypoint อย่างน้อย 2 จุดก่อนทำดราฟแผน');
   if(!$('dft'))document.body.insertAdjacentHTML('beforeend',`<div id="dft"><div class="sbox">
     <div class="shd"><b>DOC PLAN · ดราฟแผนสมบูรณ์ 2 หน้า · เลือกชนิดไฟล์</b><button onclick="$('dft').remove()">✕</button></div>
@@ -1096,7 +1096,7 @@ function openDraft(){if(S.pts.length<2)return alert('ต้องมี waypoint
       <label class="w">NOTE (ขึ้นบรรทัดใหม่ได้)<textarea id="df_note" rows="6" onchange="dfSave()" style="width:100%;margin-top:2px;font:inherit"></textarea></label></div>
     <div class="sbt"><button class="pri" id="df_docx" onclick="draftOut('docx')">Word (.docx)</button><button class="pri" id="df_pdf" onclick="draftOut('pdf')">PDF</button><button class="pri" id="df_png" onclick="draftOut('png')">PNG</button></div>
     <div style="font-size:12px;color:var(--mu)">ชื่อจุด/ระยะ/เวลา/HDG/SAFETY ALT ใช้ค่าเส้นทางหลักตามแผนที่ · แผนที่หน้า 1 = มุมมองแผนสมบูรณ์</div></div></div>`);
-  const o=dfLoad();$('df_ttl').value=o.ttl??'เส้นทางบิน ขบวน ฮ.';$('df_falt').value=o.falt??'2000';$('df_note').value=o.note??'';if(!o.note)dfApFill()}
+  const o=dfLoad();$('df_ttl').value=o.ttl??'เส้นทางบิน ขบวน ฮ.';$('df_falt').value=o.falt??'2000';$('df_note').value=o.note&&o.sig===dfSig()?o.note:'';if(!$('df_note').value)dfApFill()}
 const dfX=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const dfN=v=>{const n=+String(v).replace(/,/g,'');return String(v).trim()===''?'-':isNaN(n)?String(v):Math.round(n).toLocaleString('en-US')};
 function dfDM(v,h){v=+v;const a=Math.abs(v);let d=Math.floor(a),m=+((a-d)*60).toFixed(3);if(m>=60){d++;m=0}return d+'° '+m.toFixed(3).padStart(6,'0')+"'"+(v<0?h[1]:h[0])}
