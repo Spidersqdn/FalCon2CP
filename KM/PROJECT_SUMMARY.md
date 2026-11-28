@@ -1,12 +1,12 @@
 # FalCon2CP – Project Summary (for AI agents / new contributors)
 
-Last updated: 2026-11-16 (usage/FAQ/feedback knowledge for a future bot). Owner: SPD (`Spidersqdn`). Owner writes Thai; reply concise, copy-paste ready.
+Last updated: 2026-11-28 (synced docs with main after PR #115: DOC PLAN, REDO, Radial/DME, offline Elevation, route-aligned PDF sheets, map LOGIN). Owner: SPD (`Spidersqdn`). Owner writes Thai; reply concise, copy-paste ready.
 
 ## 1. Purpose
 Web app for helicopter mission route maps on FalconView (CADRG/RPF) charts, styled like **AirNavFlow**
-(owner's other app, repo `Spidersqdn/FLIGHT`). User draws a route **PZ → CPs → LZ**; the app draws
+(owner's other app, repo `Spidersqdn/AirNavFlow`). User draws a route **PZ → CPs → LZ**; the app draws
 leg boxes (HDG / NM / time / ALT) and **TOTAL / ACTUAL / REMAIN** tables, prints true-scale maps,
-exports KML/KMZ/GPX/CSV and a 16:9 "Mission Overview" slide PNG.
+exports KML/KMZ/GPX/CSV, a 2-page draft plan (**DOC PLAN**: Word/PDF/PNG) and a 16:9 "Mission Overview" **SLIDE** PNG.
 
 - Live: https://spidersqdn.github.io/FalCon2CP/ (GitHub Pages, branch `main`, root folder, auto deploy ~1 min)
 - Pure static site: no build step, no npm, no backend. Data lives in the browser (localStorage / IndexedDB).
@@ -14,8 +14,8 @@ exports KML/KMZ/GPX/CSV and a 16:9 "Mission Overview" slide PNG.
 
 ## 2. Files
 ```
-index.html            whole app: CSS (lines ~6-243) + JS (~244-1009). Long minified-style lines.
-config.js             window.CONFIG: MAP_URL, MAPS[] (map dropdown), COWORK_URL, DEFAULT_KT
+index.html            whole app: CSS (lines ~6-206) + HTML (~207-340) + JS (~211-1379). Long minified-style lines.
+config.js             window.CONFIG: MAP_URL, MAPS[] (map dropdown), COWORK_URL, DEFAULT_KT, PASS_HASH
 sw.js                 service worker: app shell + tile cache (OSM, Esri, DEM, PMTiles ranges). APP='app-v16'
 manifest.webmanifest  PWA manifest; icon.svg, icon-192/512.png
 lib/                  leaflet, pmtiles, jszip, jspdf, html2canvas (lazy), fonts/ (Sarabun woff2)
@@ -36,64 +36,59 @@ README.md             user guide (Thai)
 ## 3. Key code areas in index.html (search by function name)
 | Area | Functions |
 |---|---|
-| State / save | `S` (from localStorage `routeS`), `save`, `undo`, `snap` |
-| Base maps | `pmLayer`, `pickMap`, `setBase` (OSM / SAT Esri / PMTiles), `tileSrc` |
+| State / save | `S` (from localStorage `routeS`), `save`, `undo`, `redo`, `snap` |
+| Map login | `f2cpHash`, `f2cpOpen`, `f2cpLogin`, `f2cpBio`, `f2cpUnlock`, `f2cpProt`, `f2cpMaps` |
+| Base maps | `pmLayer`, `pickMap`, `setBase` (OSM / SAT Esri / PMTiles), `tileSrc`, `mapOk` |
 | Local maps (IMPORT MAP) | `lmInit`, `lmPick`, `lmAdd`, `lmDel`, `lmGrant` (IndexedDB `falcon2cp-maps`, URL `local:<name>`) |
 | Leg math | `eff` (fly-by point), `legCalc`, `legs`, `timeRule`, `nmInt`, `drawTicks` |
-| Terrain / ALT | `demTile`, `legMaxFt`, `legAlt`, `autoAlt`, `terrain`, `profile` |
+| Terrain / ALT | `demTile`, `legMaxFt`, `legAlt`, `autoAlt`, `terrain`, `profile`, `elvDl` |
 | Routes | `fixTypes`, `syncEnds`, `setRoute`, `swapRoutes`, `delAlt`, `clearAll`, `revPts`, `reverseRoute` |
 | Rendering | `drawRoutes` → `render(g, readOnly, other)`, `draw`, `withAlt`, `shape`, `tipSvg` |
 | Editors | `editLeg`, `editBox`/`saveBox`, `editLbl`/`saveLbl`, `setKind`, `setFly`, `setCpn`, `delPt`, `insAt`, `popForm`, `closeEd` |
 | SHOW toggles / sizes | `shSet`, `setSh`, `syncShow`, `setGlob`, `setLw`, `globSizes`, `pctIn`, `pctStep` |
-| Coords | `ddm`, `parseCoord`, `mgrs`, `mgrsLL`, `setLL` |
+| Coords / Radial-DME | `ddm`, `parseCoord`, `mgrs`, `mgrsLL`, `setLL`, `llSet`, `rdUi`, `rdFill`, `rdShow`, `rdSet` |
 | Place search / airports | `cwGet`, `cwDeg`, `apLoad`, `apDraw`, `setAirports`, `plLoad`, `plFind`, `srList`, `srGo`, `srPopup`, `srShow`, `srAdd` |
 | Import / export | `importFile`, `parseCSV`, `parseXML`, `setPts`, `expAs`, `routesOut`, `exportKML`, `exportCSV` |
-| SLIDE (PNG) | `openSlide`, `slMap`, `buildSlide`, `slPng`, `slShare` (fields in localStorage `slideF`) |
-| Print / PDF | `prCfg`, `prPages`, `prUpd`, `buildPages`, `previewPages`, `pv*` (paper view), `pvPDF`, `pvPrint` |
-| PWA update | `verCheck` (HEAD index.html, compare ETag; `#upd` bar), `cacheInfo`, `clearCache` |
+| DOC PLAN / SLIDE | `openDraft`, `draftOut`, `dfData`, `dfAps`, `dfImg` (`draftF`); `openSlide`, `slMap`, `buildSlide`, `slPng`, `slShare` (`slideF`) |
+| Export Map / Paper view | `prCfg`, `prRot`, `prPages`, `prUpd`, `buildPages`, `previewPages`, `naClick`, `naImgs`, `pv*`, `pvPDF`, `pvPrint` |
+| PWA update / cache | `verCheck` (HEAD index.html, compare ETag; `#upd` bar), `cacheInfo`, `clearCache`, `elvDl` |
 
 ### State model (`S`, saved as JSON in localStorage `routeS`)
 - `S.pts` = active route points, `S.alt` = other route (primary/alternate). `setRoute` swaps them.
-- Point `p`: `lat, lon, n` (name), `tf` (chosen kind PZ/LZ/CP), `fly:'by'`, `ltxt`/`lcol`/`loff` (label),
-  `msc` (symbol size), per-leg overrides `ov.alt`, `ov` time, `boff` (leg box offset), `lw` (line width), `poff`/`psc`/`ph` (NAVIGATION box).
+- Point `p`: `lat, lon, name` (`n`), `tf` (chosen kind PZ/LZ/CP), `fly:'by'`, `ltxt`/`lcol`/`loff` (label), `rdAp` (Radial/DME ref airport),
+  `msc` (symbol size), per-leg overrides `ov.alt`, `ov` time, `boff` (leg box offset), `bfl` (180° DOG LEG flip), `lw` (line width), `poff`/`psc`/`ph` (NAVIGATION box).
 - `S.ui`: `mode`, `style` (`anf` = NAVIGATION, `cp` = แผนที่แผนสมบูรณ์), `line`/`lineAlt`, sizes `msc/bsc/lsc/lwc/tbx`,
-  `sh` (SHOW flags per style), `showMain/showAlt`, `ph`.
-- `S.ui.airports`: top-right Layers > AIRPORTS visibility, shared by both styles and PDF / Print / SLIDE; defaults off for old saves.
+  `sh` (SHOW flags per style), `showMain/showAlt`, `ph`, `prRot` (route-aligned sheets), `prAll`, `pvp`.
+- `S.ui.airports`: top-right Layers > AIRPORTS visibility, shared by both styles and PDF / DOC PLAN / SLIDE; defaults off for old saves.
 - `S.ui.editLocked`: optional map edit lock; defaults unlocked for old saves. `setEditLock`/`syncLock` update the button next to paper-view % and redraw the screen read-only.
 - Before renaming a field, grep all uses; old saved data must still load (migrate, don't break).
 
 ## 4. Features (done)
 - Tap map = add point. Kind auto by order: first = PZ, last = LZ, middle = CP (`fixTypes`); user can set kind
   PZ / LZ / CP หลัก / CP สำรอง / CP หลักและสำรอง. CP numbering continues main → alternate; manual CP number.
+- Point coordinates editable as **LAT/LONG** or **Radial/DME** from an airport (`rdUi`/`rdSet`) in both the label editor and waypoint list rows.
+  Dragging waypoint symbols on the map is enabled only when unlocked (`🔓`) AND in **On MAP** mode (`LAT/LONG` mode locks point dragging).
 - Primary + alternate route **share PZ/LZ** (`syncEnds`); separate tables; ⇄ swap roles; solid/dashed per route.
 - GS (kt) → HDG, NM (whole NM), time, ALT per leg.
   - Time rule: total = NM/GS + 5 min, rounded to :x0/:x5; extra split 1/2 to last leg, 1/2 by distance; integer minutes.
-  - ALT rule: max terrain on leg (AWS Terrarium DEM z12) ceil 100 ft + 500 ft; editable.
-- FLY OVER / FLY BY CPs; BACK TRACK (reverse, keeps CP numbers); UNDO; CLEAR (both routes).
+  - ALT rule: max terrain on leg (AWS Terrarium DEM z12) ceil 100 ft + 500 ft; editable. Offline download via `⛰ โหลด Elevation` (z11 ~190MB / z12 ~750MB, resumable).
+- DOG LEG boxes orient upright along PZ→LZ automatically (manual 180° flip optional); **BACK TRACK** reverses both routes, keeps CP numbers and resets manual flips.
+- FUNCTION bar: `IMPORT`, `EXPORT ▾`, `DOC PLAN`, `SLIDE` / `UNDO` (`Ctrl+Z`), `REDO` (`Ctrl+Y`/`Ctrl+Shift+Z`), `BACK TRACK`, `CLEAR` (both routes).
 - Two styles: **NAVIGATION** (AirNavFlow look, ring waypoints, LEG boxes, shared legs drawn once) and
   **แผนที่แผนสมบูรณ์** (CP plan look: PZ pink circle, CP green square, LZ yellow circle, leg boxes with triangles).
 - Draggable labels, leg boxes, tables; tic marks with distance numbers (outbound black, return blue).
 - Elevation profile + stats header; place search (airports + OSM names, Nominatim fallback).
-- Layers (top-right map menu, AirNavFlow colors) > AIRPORTS: optional airport overlay
-  (AP.txt + airfields in สนามบิน ทบ.txt; excludes units/camps/OSM).
-  Tap an icon for coordinates, available elevation/frequencies and Add ROUTE. Separate from route SHOW flags.
-- `apControl`: Leaflet control with native details/summary, inline SVG icon, touch/keyboard support, map-click/Escape collapse.
-  Contains AIRPORTS and `showOptions` (existing SHOW inputs moved from sidebar). `fitLayers` caps scroll height to the map.
-  SHOW keeps existing `S.ui.sh` values per style; paper view toggle/% controls are first in sidebar, below the search header.
-- 🔓/🔒 beside paper-view % locks map editing (points, labels, LEG/DOG LEG boxes, tables and print-sheet handles).
-  Map panning and zoom remain available; map-click point creation and popup Add ROUTE are blocked until unlocked. Lock state persists.
+- Layers (top-right map menu, AirNavFlow colors) > AIRPORTS (`AP.txt` + airfields in `สนามบิน ทบ.txt`) + `showOptions` (SHOW inputs moved from sidebar). `fitLayers` caps scroll height to the map.
+- 🔓/🔒 beside paper-view % locks map editing (points, labels, LEG/DOG LEG boxes, tables and print-sheet handles); lock state persists.
 - Coordinates in DDM and MGRS. Base maps: PMTiles charts, OSM, satellite (Esri).
-- Export PDF / Print: preview dialog, true scale (1:50k–1:1M), A4/A3, draggable sheets, overlap ticks, paper view %.
-- Paper view supports two-finger map pinch via `pvPinch*`/`pvEndPinch`: live 10–400% display zoom, anchored at finger midpoint;
-  print scale stays fixed. Map controls keep their visual size via `--pv-ui`; `fitLayers` uses physical screen height.
-  Menu gestures are excluded; map dragging resumes and % is saved when the pinch ends.
-- SLIDE: 16:9 Mission Overview PNG (map rendered in cp style + table template).
-- PWA install, offline cache of viewed areas, auto update.
+- Paper view starts enabled by default (`pvToggle`), supports 10–400% (touch zoom-out floor via `pvMin` to avoid iPhone OOM) and two-finger pinch (`pvPinch*`/`pvEndPinch`).
+- Export Map: true scale (1:50k–1:1M), A4/A3, draggable sheets, **ตามแนวเส้นทางบิน** (route-aligned tilted sheets following the shown route), preview dialog with clickable **North arrow** per sheet (`naClick`/`naImgs`), **บันทึก PDF** and **พิมพ์** (sidebar Print button removed).
+- **DOC PLAN**: 2-page A4 draft flight plan (Word `.docx` / PDF / PNG; iOS Share Sheet files-only). Chooses primary or alternate route; p.1 map uses paper-view scale & current style; p.2 has CP/HDG/DIST/TIME/ALT table, DDM/MGRS coordinates and auto NOTE (PZ/LZ freqs from `AD.txt`, `RADAR OSCAR CONTROL`, or `DIAMOND UHF 236.000`).
+- **SLIDE**: 16:9 Mission Overview PNG (map rendered in `cp` style + table template following primary route).
+- PWA install, offline cache of viewed areas (`sw.js` `app-v16` persists offline toggle), auto update, iOS full-screen `--app-h`.
 - Map login: app opens freely on OSM; JOG 1:250k / TPC 1:500k (`CONFIG.MAPS`) appear only after "🔑 LOGIN" (MAP section, before IMPORT MAP).
   Modal `#lock` (`f2cpOpen`), one shared password, SHA-256 in `config.js` `PASS_HASH` ("" = off; new hash: Console `f2cpHash("pw")`).
-  Asked every app open; correct password logs in without the button; hidden username for Keychain. First login registers a local
-  passkey (`f2cpPk`); later LOGIN asks Face ID / fingerprint at once (iOS shows "ใช้พาสคีย์" first, can't skip). `f2cpProt` in `setBase`
-  blocks JOG/TPC while locked; `f2cpMaps` adds them after login and reopens the last one. Not real security (public site).
+  Asked every app open; first login registers a local passkey (`f2cpPk`) for Face ID / fingerprint. `f2cpProt` blocks JOG/TPC while locked; `f2cpMaps` adds them after login. Not real security (public site).
 
 ## 5. Maps
 - Online (only these two): `map250k.pmtiles` (JOG, 228 MB) and `map500k.pmtiles` (TPC, 65 MB) at
@@ -110,7 +105,7 @@ README.md             user guide (Thai)
 ## 6. Place search data
 `CONFIG.COWORK_URL` = `https://spidersqdn.github.io/DataBase/CoWork/` (repo DataBase, folder `CoWork/`):
 `AP.txt` (airports: `ICAO|IATA|name|prov|LAT|LONG|ELEV|note`), `สนามบิน ทบ.txt` (MGRS, converted in app),
-`AD.txt` (frequencies in popup), `places.json` (OSM names, built at deploy). Cached in localStorage.
+`AD.txt` (frequencies in popup and DOC PLAN NOTE), `places.json` (OSM names, built at deploy). Cached in localStorage.
 To add/fix an airport: edit `CoWork/AP.txt` in DataBase repo.
 `apLoad` shares airport data with search without loading places.json; caches via `cwGet` for offline reuse.
 Keep separate source positions even when nearby (some are approximate). Airport pane is below route graphics.
@@ -120,11 +115,11 @@ Keep separate source positions even when nearby (some are approximate). Airport 
 - **Owner uses Safari (iPad/iPhone)** – test WebKit behaviour; Safari ignores `@page` margins (hence jsPDF export).
 - Layout: PC sidebar fixed **390px** (same as AirNavFlow `#panel`); responsive for phone/tablet;
   phone landscape (max-height:500px) uses floating editor `#edp` instead of the side panel (`isSheet()`).
-- Touch menus use `touch-action:pan-x pan-y` to stop page pinch/double-tap zoom while retaining scrolling and taps.
+- Touch menus use `touch-action:pan-x pan-y` + double-tap guard to stop page zoom while retaining scrolling and taps.
   `menuTouchTarget` scopes Safari gesture cancellation to menus/toolbars; do not disable viewport zoom globally or change Leaflet map gestures.
 - CSS class **`.ed` is taken** (leg edit grid) – don't reuse the name.
 - **Type and ALT input fields were removed** on purpose; kind is automatic by order. Don't add them back.
-- UI labels: English section names (MAP, SHOW PZ CPs LZ, SHOW DOG LEGs, UNDO / BACK TRACK / CLEAR) + Thai words
+- UI labels: English section names (`MAP`, `FUNCTION`, `SHOW PZ CPs LZ`, `SHOW DOG LEGs`, `UNDO / REDO / BACK TRACK / CLEAR`) + Thai words
   (หลัก / สำรอง, แผนที่แผนสมบูรณ์). Map font = Sarabun (TH SarabunPSK look).
 - Colors: PZ `#FF66CC`, CP `#22BB33`, LZ `#FFD700`. Dark UI, gold buttons (AirNavFlow style).
 - `sw.js`: bump `APP` only when `sw.js` itself changes (index.html changes reach installed apps without a bump).
@@ -142,9 +137,9 @@ Keep separate source positions even when nearby (some are approximate). Airport 
 
 ## 9. Related repos
 - `Spidersqdn/DataBase` – hosts maps (`FalCon2CP/`) and shared data (`CoWork/`) on GitHub Pages.
-- `Spidersqdn/FLIGHT` – AirNavFlow (style reference: sidebar, place search, NAVIGATION look).
+- `Spidersqdn/AirNavFlow` (formerly `FLIGHT`) – style reference: sidebar, place search, NAVIGATION look.
 
 ## 10. Open ideas (not started)
 - A support bot can use USER_GUIDE/FAQ/FEEDBACK/BOT_GUIDE as its knowledge base. Channel, feedback storage and automation are not selected/connected yet.
-- AirNavFlow could read `CoWork/AP.txt` instead of its own airport list (needs FLIGHT repo change).
+- AirNavFlow could read `CoWork/AP.txt` instead of its own airport list (needs AirNavFlow repo change).
 - Optional APK (Capacitor) / .exe (Tauri) wrappers – reuse IMPORT MAP, no map bundling.
