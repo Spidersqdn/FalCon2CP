@@ -1,8 +1,8 @@
 // Offline cache: app files + map tiles (OSM tiles and PMTiles byte ranges) viewed while online.
 // Bump APP when sw.js changes. App files are always revalidated with the server, so index.html changes
 // reach installed (home-screen) apps without a bump; the page also checks for a new version on resume.
-const APP='app-v16',TILES='tiles';
-const SHELL=['./','index.html','config.js','lib/leaflet.js','lib/leaflet.css','lib/pmtiles.js','lib/jszip.min.js','icon.svg','icons/slide-bg.jpg','icon-192.png','manifest.webmanifest','lib/fonts/sarabun-400-thai.woff2','lib/fonts/sarabun-400-latin.woff2','lib/fonts/sarabun-700-thai.woff2','lib/fonts/sarabun-700-latin.woff2'];
+const APP='app-v17',TILES='tiles';
+const SHELL=['./','index.html','config.js','lib/leaflet.js','lib/leaflet.css','lib/pmtiles.js','lib/jszip.min.js','lib/html2canvas.min.js','lib/jspdf.umd.min.js','icon.svg','icons/slide-bg.jpg','icon-192.png','manifest.webmanifest','lib/fonts/sarabun-400-thai.woff2','lib/fonts/sarabun-400-latin.woff2','lib/fonts/sarabun-700-thai.woff2','lib/fonts/sarabun-700-latin.woff2'];
 // The "keep maps offline" setting is also stored in the app cache: the browser stops an idle worker and restarts it
 // with fresh variables, which used to turn caching back on after the user had switched it off.
 let offline=true,offP=null;
