@@ -482,13 +482,15 @@ function shape(t){const c=kind(t);
   if(c==='PZ')return '<svg width="26" height="24"><polygon points="13,2 24,22 2,22" fill="#F5A800" stroke="#1F4E79" stroke-width="2.5"/></svg>';
   if(c==='LZ')return '<svg width="26" height="26"><circle cx="13" cy="13" r="11" fill="#F5A800" stroke="#1F4E79" stroke-width="2.5"/></svg>';
   return '<svg width="26" height="26"><rect x="2" y="2" width="22" height="22" fill="none" stroke="#000" stroke-width="2.5"/></svg>';}
-// undo history: snapshot route before each change; rapid changes (sliders) merge into one step
-const HIST=[],FUT=[];let lastSnap=null,lastT=0,undoing=false;
-function snap(){const j=JSON.stringify(S.pts,(k,v)=>k==='_auto'?undefined:v);if(j===lastSnap)return;
-  if(lastSnap!==null&&!undoing){const now=Date.now();if(now-lastT>400||!HIST.length)HIST.push(lastSnap);FUT.length=0;lastT=now;if(HIST.length>100)HIST.shift()}
+// undo history: snapshot route after render; rapid slider/stepper inputs merge into one step
+const HIST=[],FUT=[],SNAP_SKIP=new Set(['_auto','_la','_lo','box','lbl']);let lastSnap=null,lastT=0,lastEl=null,undoing=false;
+function snap(){const j=JSON.stringify([S.pts,S.alt],(k,v)=>SNAP_SKIP.has(k)?undefined:v);if(j===lastSnap)return;
+  if(lastSnap!==null&&!undoing){const now=Date.now(),el=document.activeElement,m=el&&el===lastEl&&(el.tagName==='INPUT'||el.classList.contains('stp'))&&now-lastT<=400;
+    if(!m||!HIST.length)HIST.push(lastSnap);FUT.length=0;lastT=now;lastEl=el;if(HIST.length>100)HIST.shift()}
   lastSnap=j}
-function undo(){if(!HIST.length)return;undoing=true;if(lastSnap!==null)FUT.push(lastSnap);S.pts=JSON.parse(HIST.pop());closeEd();draw();undoing=false}
-function redo(){if(!FUT.length)return;undoing=true;if(lastSnap!==null)HIST.push(lastSnap);S.pts=JSON.parse(FUT.pop());closeEd();draw();undoing=false}
+function applySnap(s){const o=JSON.parse(s);if(Array.isArray(o[0]))[S.pts,S.alt]=o;else S.pts=o;closeEd();draw();routeBtns()}
+function undo(){if(!HIST.length)return;undoing=true;if(lastSnap!==null)FUT.push(lastSnap);applySnap(HIST.pop());undoing=false}
+function redo(){if(!FUT.length)return;undoing=true;if(lastSnap!==null)HIST.push(lastSnap);applySnap(FUT.pop());undoing=false}
 // route roles by position: first = PZ, last = LZ, the rest = CP (keeps a matching suffix like CP2)
 // CPs are numbered through the primary route first (CP1..n), then continue on the alternate route
 // a CP with a manual number (cpn) keeps it; auto numbers skip the numbers set by hand
@@ -531,7 +533,7 @@ const lkey=(a,b)=>[wkey(a),wkey(b)].sort().join('|'); // leg A-B == leg B-A
 const wkey=p=>(+p.lat).toFixed(4)+','+(+p.lon).toFixed(4); // NAVIGATION: same position = same waypoint, drawn once
 function drawRoutes(g,ro){const ca=(S.ui.route||'main')==='alt';g._cur=new Set(showR(ca)?S.pts.map(wkey):[]);g._curL=new Set(showR(ca)?S.pts.slice(1).map((b,i)=>lkey(S.pts[i],b)):[]);if(showR(!ca))withAlt(()=>render(g,ro,true)); // other route stays draggable on screen
   return render(showR(ca)?g:L.layerGroup(),ro)}
-function draw(){syncLock();fixTypes();syncEnds();snap();grp.clearLayers();const r=drawRoutes(grp,editLocked());list(r.L_,r.tot,r.tmin);save();prUpd();terrain();withAlt(terrain)}
+function draw(){syncLock();fixTypes();syncEnds();grp.clearLayers();const r=drawRoutes(grp,editLocked());snap();list(r.L_,r.tot,r.tmin);save();prUpd();terrain();withAlt(terrain)}
 // ---- leg ALT from terrain: highest ground along the leg (AWS Terrarium DEM, z12 ~30 m), round up to 100 ft, + 500 ft ----
 const ELV={},ELP={},DEM={};const ekey=(a,b)=>[LA(a),LO(a),LA(b),LO(b)].join(',');
 function autoAlt(a,b){const f=b&&ELV[ekey(a,b)];return f==null?null:String(Math.ceil(f/100)*100+500)}
@@ -592,12 +594,12 @@ function render(g,ro,other){const L_=legs(),n=S.pts.length,anf=S.ui.style==='anf
           html:`<div style="transform:translate(-50%,-50%) rotate(${ang}deg) scale(${psc})"><span class="legt" style="cursor:${ro?'default':'move'}">${esc(txt)}</span></div>`})}).addTo(g);
         if(!ro){pm.on('dragend',e=>{const q=e.target.getLatLng();a.poff=[q.lat-gm[0],q.lng-gm[1]];draw()});pm.on('click',ed(()=>editLeg(i,pos)))}}}
     else L.polyline([[LA(a),LO(a)],[LA(b),LO(b)]],{color:'#000',weight:a.lw||S.ui.lw||3*(S.ui.lwc||1),dashArray:dash}).addTo(g);
-    if(!shw('box')||dupL)return;
     // box position is stored as an offset from the leg midpoint, so it follows the leg when points move/insert
     const mid=[(LA(a)+LA(b))/2,(LO(a)+LO(b))/2],half=Math.hypot(LA(a)-LA(b),LO(a)-LO(b))/2;
     const dl=LA(b)-LA(a),dn=LO(b)-LO(a),k=0.035/(Math.hypot(dl,dn)||1),def=dn>=0?[-dn*k,dl*k]:[dn*k,-dl*k]; // default: beside the leg, below it
     if(!a.boff){a.boff=a.box?[a.box[0]-mid[0],a.box[1]-mid[1]]:def;if(Math.hypot(...a.boff)>half+0.05)a.boff=def}
     a.box=[mid[0]+a.boff[0],mid[1]+a.boff[1]];
+    if(!shw('box')||dupL)return;
     const bc=l.o.col||'#1F4E79';
     const bo=Object.assign({h:true,t:true},a.bx||{});
     // heading sits inside the head triangle, reciprocal inside the tail triangle (as cells if a triangle is off)
@@ -622,13 +624,15 @@ function render(g,ro,other){const L_=legs(),n=S.pts.length,anf=S.ui.style==='anf
     if(p._la!=null){L.polyline([[p.lat,p.lon],[p._la,p._lo]],{color:'#000',weight:1.5,dashArray:'4 4',interactive:false}).addTo(g);
       L.circleMarker([p._la,p._lo],{radius:3,color:'#000',weight:1.5,fillColor:'#fff',fillOpacity:1,interactive:false}).addTo(g)}
     const first=i===0,last=i===n-1,ms=p.msc||S.ui.msc||1,sz=(anf?RING*2:26)*ms;const skipMk=noEnds&&(first||last);
+    if(!p.loff)p.loff=p.lbl?[p.lbl[0]-p.lat,p.lbl[1]-p.lon]:[0.05,0]; // label follows its point
+    p.lbl=[p.lat+p.loff[0],p.lon+p.loff[1]];
     if(anf){const k=wkey(p);if(seen.has(k)||(other&&g._cur&&g._cur.has(k)))return;seen.add(k)} // duplicate waypoint: ring + W.Pt shown once (current route wins)
     const mk=skipMk?null:L.marker([p.lat,p.lon],{draggable:!ro&&S.ui.mode==='map',interactive:!ro,keyboard:!ro,zIndexOffset:500,icon:L.divIcon({className:'',html:`<div style="width:${sz}px;height:${sz}px${SHEET_R?`;transform:rotate(${SHEET_R}deg)`:''}"><div style="transform:scale(${ms});transform-origin:0 0">${anf?`<div class="ring" style="width:${RING*2}px;height:${RING*2}px"></div>`:shape(p.type)}</div></div>`,iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]})}).addTo(g);
     if(!ro&&mk){mk.bindTooltip(esc(p.type+' '+p.name),{direction:'top',offset:[0,-12]});
-    mk.on('dragend',e=>{const q=e.target.getLatLng();p.lat=+q.lat.toFixed(6);p.lon=+q.lng.toFixed(6);draw()})}
+    mk.on('dragend',e=>{const q=e.target.getLatLng(),la=+q.lat.toFixed(6),lo=+q.lng.toFixed(6),T=other?S.pts:S.alt,k=wkey(p);
+      let o=null;if(T&&T.length>1){if(other&&(first||last))o=T[first?0:T.length-1];else for(let j=1;j<T.length-1;j++)if(wkey(T[j])===k){o=T[j];break}}
+      p.lat=la;p.lon=lo;if(o){o.lat=la;o.lon=lo}draw()})}
     if(!shw('lbl'))return;
-    if(!p.loff)p.loff=p.lbl?[p.lbl[0]-p.lat,p.lbl[1]-p.lon]:[0.05,0]; // label follows its point
-    p.lbl=[p.lat+p.loff[0],p.lon+p.loff[1]];
     if(anf){const lb=L.marker(p.lbl,{draggable:!ro,interactive:!ro,keyboard:!ro,icon:L.divIcon({className:'lbl',iconSize:null,iconAnchor:[0,0],
         html:`<div style="transform:rotate(${SHEET_R}deg) scale(${p.lsc||S.ui.lsc||1});transform-origin:0 0"><span class="wpt">${esc(p.name||lblTxt(p))}</span></div>`})}).addTo(g);
       if(!ro){lb.on('dragend',e=>{const q=e.target.getLatLng();p.loff=[q.lat-p.lat,q.lng-p.lon];draw()});lb.on('click',ed(()=>editLbl(i)))}return}
@@ -740,7 +744,7 @@ function setKind(i,k){const P=S.pts,p=P[i],onMain=(S.ui.route||'main')==='main';
   if(oi>=0){resetBox(i-1);P.splice(i,1);closeEd();draw();return} // shared CP -> keep only the copy on the other route
   if(!ensAlt())return;
   P.splice(i,1);p.tf='CP';const T=S.alt,at=insAt(T,p);
-  T.splice(at,0,p);HIST.length=FUT.length=0;lastSnap=null;closeEd();draw();routeBtns()}
+  T.splice(at,0,p);closeEd();draw();routeBtns()}
 // CP shared by both routes: same position in the other route (S.alt holds the route not being edited)
 function inOther(p){const T=S.alt;if(!T)return -1;const k=wkey(p);for(let j=1;j<T.length-1;j++)if(wkey(T[j])===k)return j;return -1}
 function ensAlt(){const P=S.pts;if(S.alt)return true;const f=P[0],z=P[P.length-1];if(P.length<2||kind(f.type)!=='PZ'||kind(z.type)!=='LZ'){alert('เลือก PZ และ LZ ก่อน');return false}
@@ -776,7 +780,7 @@ function revPts(){const n=S.pts.length;if(n<2)return;
   const f=S.pts[0],z=S.pts[n-1];if(kind(f.type)==='LZ'&&kind(z.type)==='PZ'){f.type='PZ'+f.type.slice(2);z.type='LZ'+z.type.slice(2);[f.lcol,z.lcol]=[z.lcol,f.lcol];const dc=[COL.PZ,COL.LZ].map(c=>c.toLowerCase());[f,z].forEach(p=>{if(p.lcol==null||dc.includes(String(p.lcol).toLowerCase()))delete p.lcol})}
 }
 function reverseRoute(){if(S.pts.length<2)return;[S.pts,S.alt].forEach(a=>(a||[]).forEach(p=>{const m=/^CP(\d+)$/.exec(p.type);if(m&&!p.cpn)p.cpn=+m[1]}));revPts();if(S.alt&&S.alt.length>1){[S.pts,S.alt]=[S.alt,S.pts];revPts();[S.pts,S.alt]=[S.alt,S.pts]}draw()}
-function setLL(i,k,v){const x=parseCoord(v);if(x===null)return alert('รูปแบบพิกัดไม่ถูกต้อง');S.pts[i][k]=x;draw()}
+function setLL(i,k,v){const x=parseCoord(v);if(x===null)return alert('รูปแบบพิกัดไม่ถูกต้อง');const p=S.pts[i],oi=inOther(p),q=oi>=0?S.alt[oi]:null;[p,q].forEach(o=>{if(o)o[k]=x});draw()}
 function resetBox(...ix){ix.forEach(k=>{const p=S.pts[k];if(p){delete p.boff;delete p.box;delete p.poff}})}
 function mv(i,d){if(i+d<0||i+d>=S.pts.length)return;resetBox(i-1,i,i+d-1,i+d);[S.pts[i],S.pts[i+d]]=[S.pts[i+d],S.pts[i]];draw()}
 function ins(i){const a=S.pts[i],b=S.pts[i+1];if(!b)return setMode('map');resetBox(i);
