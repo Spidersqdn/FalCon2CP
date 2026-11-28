@@ -734,16 +734,17 @@ function llSet(i,k,v){const x=parseCoord(v);if(x===null)return alert('รูป�
 function delPt(i){const p=S.pts[i];if(!confirm('ลบจุด '+(p.type+' '+p.name).trim()+' ? (กด Undo เพื่อย้อนได้)'))return;resetBox(i-1);S.pts.splice(i,1);closeEd();draw()}
 // point type: PZ / LZ move the point to the start / end (the old PZ / LZ becomes a CP);
 // CP หลัก / CP สำรอง keep it as a CP on that route, moving it across routes (in import order) when needed
-function setKind(i,k){const P=S.pts,p=P[i],onMain=(S.ui.route||'main')==='main';
-  if(k==='PZ'||k==='LZ'){P.splice(i,1);const o=k==='PZ'?P[0]:P[P.length-1];if(o&&kind(o.type)===k)o.tf='CP';
+function setKind(i,k){const P=S.pts,p=P[i],onMain=(S.ui.route||'main')==='main',oi=inOther(p);
+  if(k==='PZ'||k==='LZ'){if((k==='PZ'&&i===0)||(k==='LZ'&&i===P.length-1))return;if(oi>=0)S.alt.splice(oi,1);resetBox(0,i-1,i,P.length-2);
+    P.splice(i,1);const o=k==='PZ'?P[0]:P[P.length-1];if(o&&kind(o.type)===k)o.tf='CP';
     p.tf=k;delete p.fly;if(k==='PZ')P.unshift(p);else P.push(p);closeEd();draw();return}
-  const oi=inOther(p);
+  if(i===0||i===P.length-1)return alert('เลือกจุดอื่นเป็น '+(i===0?'PZ':'LZ')+' แทนก่อน');
   if(k==='B'){if(oi>=0)return;if(!ensAlt())return;p.tf='CP';const T=S.alt,q={type:'CP',tf:'CP',name:p.name,lat:p.lat,lon:p.lon};if(p.ord!=null)q.ord=p.ord;if(p.cpn)q.cpn=p.cpn;if(p.fly)q.fly=p.fly;
     T.splice(insAt(T,q),0,q);closeEd();draw();routeBtns();editLbl(i);return}
   if((k==='A')===!onMain){p.tf='CP';if(oi>=0)S.alt.splice(oi,1);draw();editLbl(i);return} // CP of this route only: drop its copy from the other route
-  if(oi>=0){resetBox(i-1);P.splice(i,1);closeEd();draw();return} // shared CP -> keep only the copy on the other route
+  if(oi>=0){resetBox(i-1,i);P.splice(i,1);closeEd();draw();return} // shared CP -> keep only the copy on the other route
   if(!ensAlt())return;
-  P.splice(i,1);p.tf='CP';const T=S.alt,at=insAt(T,p);
+  resetBox(i-1,i);P.splice(i,1);p.tf='CP';const T=S.alt,at=insAt(T,p);
   T.splice(at,0,p);closeEd();draw();routeBtns()}
 // CP shared by both routes: same position in the other route (S.alt holds the route not being edited)
 function inOther(p){const T=S.alt;if(!T)return -1;const k=wkey(p);for(let j=1;j<T.length-1;j++)if(wkey(T[j])===k)return j;return -1}
