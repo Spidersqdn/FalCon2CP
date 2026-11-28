@@ -495,10 +495,10 @@ function redo(){if(!FUT.length)return;undoing=true;if(lastSnap!==null)HIST.push(
 // CPs are numbered through the primary route first (CP1..n), then continue on the alternate route
 // a CP with a manual number (cpn) keeps it; auto numbers skip the numbers set by hand
 function fixTypes(){const dc=Object.values(COL).map(c=>c.toLowerCase()),onMain=(S.ui.route||'main')==='main';let k=0;
-  const used=new Set();[S.pts,S.alt].forEach(a=>(a||[]).forEach(p=>{if(p.cpn)used.add(+p.cpn)}));
+  const used=new Set(),sh={};[S.pts,S.alt].forEach(a=>(a||[]).forEach(p=>{if(p.cpn)used.add(+p.cpn)}));
   const nx=()=>{do k++;while(used.has(k));return k};
   [onMain?S.pts:S.alt,onMain?S.alt:S.pts].forEach(arr=>{if(!arr)return;const n=arr.length;
-    arr.forEach((p,i)=>{const want=p.tf||(i===0?'PZ':i===n-1?'LZ':'CP');if(want!=='CP')delete p.cpn;const t=want==='CP'?'CP'+(p.cpn||nx()):want;if(p.type===t)return;
+    arr.forEach((p,i)=>{const want=p.tf||(i===0?'PZ':i===n-1?'LZ':'CP');if(want!=='CP')delete p.cpn;const w=wkey(p),t=want==='CP'?'CP'+(p.cpn||sh[w]||(sh[w]=nx())):want;if(p.type===t)return;
       if(kind(p.type)!==want&&p.lcol!=null&&dc.includes(String(p.lcol).toLowerCase()))delete p.lcol;p.type=t})})}
 // ---- primary / alternate route: S.pts = route being edited, S.alt = the other one; PZ & LZ are shared ----
 const SHARE=['name','lat','lon','ltxt','lcol','lsc','msc','tbx','noTbl'];
@@ -623,10 +623,10 @@ function render(g,ro,other){const L_=legs(),n=S.pts.length,anf=S.ui.style==='anf
   S.pts.forEach((p,i)=>{ if(i>0){cn+=NI[i-1];cm+=L_[i-1].min}
     if(p._la!=null){L.polyline([[p.lat,p.lon],[p._la,p._lo]],{color:'#000',weight:1.5,dashArray:'4 4',interactive:false}).addTo(g);
       L.circleMarker([p._la,p._lo],{radius:3,color:'#000',weight:1.5,fillColor:'#fff',fillOpacity:1,interactive:false}).addTo(g)}
-    const first=i===0,last=i===n-1,ms=p.msc||S.ui.msc||1,sz=(anf?RING*2:26)*ms;const skipMk=noEnds&&(first||last);
+    const first=i===0,last=i===n-1,ms=p.msc||S.ui.msc||1,sz=(anf?RING*2:26)*ms,dupW=other&&g._cur&&g._cur.has(wkey(p));const skipMk=(noEnds&&(first||last))||dupW;
     if(!p.loff)p.loff=p.lbl?[p.lbl[0]-p.lat,p.lbl[1]-p.lon]:[0.05,0]; // label follows its point
     p.lbl=[p.lat+p.loff[0],p.lon+p.loff[1]];
-    if(anf){const k=wkey(p);if(seen.has(k)||(other&&g._cur&&g._cur.has(k)))return;seen.add(k)} // duplicate waypoint: ring + W.Pt shown once (current route wins)
+    if(anf){const k=wkey(p);if(seen.has(k)||dupW)return;seen.add(k)} // duplicate waypoint: ring + W.Pt shown once (current route wins)
     const mk=skipMk?null:L.marker([p.lat,p.lon],{draggable:!ro&&S.ui.mode==='map',interactive:!ro,keyboard:!ro,zIndexOffset:500,icon:L.divIcon({className:'',html:`<div style="width:${sz}px;height:${sz}px${SHEET_R?`;transform:rotate(${SHEET_R}deg)`:''}"><div style="transform:scale(${ms});transform-origin:0 0">${anf?`<div class="ring" style="width:${RING*2}px;height:${RING*2}px"></div>`:shape(p.type)}</div></div>`,iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]})}).addTo(g);
     if(!ro&&mk){mk.bindTooltip(esc(p.type+' '+p.name),{direction:'top',offset:[0,-12]});
     mk.on('dragend',e=>{const q=e.target.getLatLng(),la=+q.lat.toFixed(6),lo=+q.lng.toFixed(6),T=other?S.pts:S.alt,k=wkey(p);
@@ -756,7 +756,7 @@ function insAt(T,p){const n=T.length,end=n&&kind(T[n-1].type)==='LZ'?n-1:n;
   for(let j=1;j<n;j++){const x=d(T[j-1],p)+d(p,T[j])-d(T[j-1],T[j]);if(x<bd){bd=x;best=j}}return best}
 function setCpn(i,v){const p=S.pts[i],n=parseInt(v,10),oi=inOther(p),q=oi>=0?S.alt[oi]:null;const old=(p.type+' '+p.name).trim();[p,q].forEach(x=>{if(!x)return;if(n>0)x.cpn=n;else delete x.cpn});draw();const e=$('eNo'),l=$('eL');if(e)e.placeholder=p.type.slice(2);if(l&&l.value===old){l.value=(p.type+' '+p.name).trim();l.placeholder=l.value}}
 function autoCpn(){[S.pts,S.alt].forEach(a=>(a||[]).forEach(p=>delete p.cpn));closeEd();draw()}
-function setFly(i,by){const p=S.pts[i];if(by)p.fly='by';else delete p.fly;$('fO').classList.toggle('on',!by);$('fB').classList.toggle('on',!!by);draw()}
+function setFly(i,by){const p=S.pts[i],oi=inOther(p),q=oi>=0?S.alt[oi]:null;[p,q].forEach(x=>{if(!x)return;if(by)x.fly='by';else delete x.fly});$('fO').classList.toggle('on',!by);$('fB').classList.toggle('on',!!by);draw()}
 function saveLbl(i){const p=S.pts[i];p.ltxt=$('eL').value.trim();if(p.ltxt===(p.type+' '+p.name).trim())p.ltxt='';p.lcol=$('eK').value;if(p.lcol.toLowerCase()===col(p.type).toLowerCase())delete p.lcol;p.noTbl=$('eH').checked;p.tv=[...Array(12)].map((_,k)=>$('tv'+k)?.value.trim()||'');
   if($('lAll').checked){S.ui.lsc=p.lsc;S.ui.msc=p.msc;S.pts.forEach(q=>{delete q.lsc;delete q.msc;q.tbx=p.tbx})}closeEd();draw()}
 // ---- waypoint list (AirNavFlow style) ----
@@ -767,7 +767,7 @@ function list(L_,tot,tmin){
    <div class="btns"><button onclick="mv(${i},-1)" title="เลื่อนขึ้น">↑</button><button class="x" onclick="resetBox(${i}-1);S.pts.splice(${i},1);draw()" title="ลบ">✕</button>
     <button onclick="mv(${i},1)" title="เลื่อนลง">↓</button><button onclick="ins(${i})" title="แทรกจุดถัดไป">↓+</button>
 </div></div>
-   <div class="ed"><input value="${esc(p.name)}" title="Name" onchange="S.pts[${i}].name=this.value;draw()" style="grid-column:span 5">
+   <div class="ed"><input value="${esc(p.name)}" title="Name" onchange="const p=S.pts[${i}],oi=inOther(p);p.name=this.value;if(oi>=0)S.alt[oi].name=this.value;draw()" style="grid-column:span 5">
     <input value="${ddm(p.lat)}" title="Lat (DD MM.mm)" inputmode="decimal" onchange="setLL(${i},'lat',this.value)" style="grid-column:span 2"><input value="${ddm(p.lon)}" title="Lon (DDD MM.mm)" inputmode="decimal" onchange="setLL(${i},'lon',this.value)" style="grid-column:span 2">
     <div class="rdc" id="rdCur_${i}" style="grid-column:span 5"></div>${rdUi(i,'_'+i)}</div></li>`}).join('')
     +(L_.length?`<li class="v" style="color:var(--au);font:bold 12px Consolas,monospace">TOTAL ${tot.toFixed(1)} NM · ${hm(tmin)}</li>`:'');
